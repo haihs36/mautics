@@ -1,0 +1,6 @@
+services:
+  MauticPlugin\MauticExtendedFieldBundle\Form\ExtendedFieldExtension:
+    arguments:
+      $coreParameters: '@mautic.helper.core_parameters'
+    tags:
+      - { name: form.type_extension, extended_type: Mautic\LeadBundle\Form\Type\FieldType }
