@@ -1,90 +1,98 @@
 <?php
 
-
 namespace MauticPlugin\MauticTransactionBundle\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
+use Doctrine\DBAL\Types\Type;
+use Doctrine\ORM\Mapping\ClassMetadata;
+use Mautic\ApiBundle\Serializer\Driver\ApiMetadataDriver;
+use Mautic\CoreBundle\Doctrine\Mapping\ClassMetadataBuilder;
+use Mautic\CoreBundle\Helper\InputHelper;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="transactions")
- */
+
 class Transaction
 {
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
-     * @ORM\Column(type="integer")
-     */
-    protected $id;
+
+    const TABLE = 'transactions';
 
     /**
-     * @ORM\Column(type="string", length=255)
+     * @var int
      */
-    protected $meeyid;
+    private $id;
 
     /**
-     * @ORM\Column(type="string", length=255)
+     * @var string
      */
-    protected $orderid;
+    private $name;
 
     /**
-     * @ORM\Column(type="string", length=255)
+     * @param string $name
+     * @param bool $clean
      */
-    protected $name;
+    public function __construct($name = null, $clean = true)
+    {
+        $this->name = $clean ? $this->validateName($name) : $name;
+    }
+
+    public static function loadMetadata(ClassMetadata $metadata)
+    {
+        $builder = new ClassMetadataBuilder($metadata);
+        $builder->setTable(self::TABLE)
+            ->setEmbeddable()
+            ->setCustomRepositoryClass(TransactionRepository::class)->addIndex(['name'], 'lead_name_search');
+
+        $builder->addId();
+        $builder->addField('name', Type::STRING);
+    }
+
+
+    public static function loadApiMetadata(ApiMetadataDriver $metadata)
+    {
+        $metadata->setGroupPrefix('transaction')
+            ->addListProperties(
+                [
+                    'id',
+                    'name',
+                ]
+            )
+            ->build();
+    }
 
     /**
-     * @ORM\Column(type="datetime")
+     * @return mixed
      */
-    protected $date;
-
-    // Getters and setters
     public function getId()
     {
         return $this->id;
     }
 
-    public function getMeeyid()
-    {
-        return $this->meeyid;
-    }
-
-    public function setMeeyid($meeyid)
-    {
-        $this->meeyid = $meeyid;
-        return $this;
-    }
-
-    public function getOrderid()
-    {
-        return $this->orderid;
-    }
-
-    public function setOrderid($orderid)
-    {
-        $this->orderid = $orderid;
-        return $this;
-    }
-
+    /**
+     * @return string
+     */
     public function getName()
     {
         return $this->name;
     }
 
+    /**
+     * @param string $name
+     *
+     * @return Transaction
+     */
     public function setName($name)
     {
-        $this->name = $name;
+        $this->name = $this->validateName($name);
+
         return $this;
     }
 
-    public function getDate()
-    {
-        return $this->date;
-    }
 
-    public function setDate($date)
+    /**
+     * @param string $name
+     *
+     * @return Transaction
+     */
+    protected function validateName($name)
     {
-        $this->date = $date;
-        return $this;
+        return InputHelper::string(trim($name));
     }
 }

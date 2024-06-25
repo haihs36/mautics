@@ -1,19 +1,9 @@
 <?php
-	
-	namespace MauticPlugin\MauticTransactionBundle;
-	
-	use Mautic\PluginBundle\Bundle\PluginBundleBase;
-    use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-    class MauticTransactionBundle extends PluginBundleBase
-	{
-        public function build(ContainerBuilder $container)
-        {
-            parent::build($container);
-        }
+namespace MauticPlugin\MauticTransactionBundle;
 
-        public function getEntityPath()
-        {
-            return 'Entity';
-        }
-	}
+use Mautic\PluginBundle\Bundle\PluginBundleBase;
+
+class MauticTransactionBundle extends PluginBundleBase
+{
+}
