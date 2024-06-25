@@ -1,0 +1,15 @@
+{
+  "name": "mautic/transaction",
+  "description": "Transaction plugin built on the Integrations framework.",
+  "type": "mautic-plugin",
+  "version": "1.0.1",
+  "license": "GPL-3.0-or-later",
+  "keywords": ["mautic","plugin","integration"],
+  "require": {
+    "php": ">=7.4.0 <8.1",
+    "mautic/core-lib": "^4.0"
+  },
+  "extra": {
+    "install-directory-name": "MauticTransactionFieldsBundle"
+  }
+}
