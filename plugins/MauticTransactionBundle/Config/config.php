@@ -1,26 +1,41 @@
 <?php
 
 return [
-    'name'        => 'Mautic transaction bundle',
+    'name' => 'Mautic transaction bundle',
     'description' => 'Provides an interface for management.',
-    'version'     => '1.0',
-    'author'      => 'Admin',
-    'routes'      => [
+    'version' => '1.0',
+    'author' => 'Admin',
+    'routes' => [
         'main' => [
             'mautic_transaction_index' => [
-                'path'       => '/transactions/{page}',
+                'path' => '/transactions/{page}',
                 'controller' => 'MauticTransactionBundle:Transaction:index',
             ],
             'mautic_transaction_action' => [
-                'path'       => '/transactions/{objectAction}/{objectId}',
+                'path' => '/transactions/{objectAction}/{objectId}',
                 'controller' => 'MauticTransactionBundle:Transaction:execute',
             ],
         ],
+        'api' => [
+            'mautic_api_transactionstandard' => [
+                'standard_entity' => true,
+                'name'            => 'transactions',
+                'path'            => '/transactions',
+                'controller'      => 'MauticTransactionBundle:Api\Transaction:index',
+                'method'          => 'GET',
+            ],
+            'mautic_api_add_transaction' => [
+                'name' => 'add-transaction',
+                'path' => '/transactions/add-transaction',
+                'controller' => 'MauticTransactionBundle:Api\Transaction:addTransaction',
+                'method' => 'POST',
+            ],
+        ]
     ],
-    'services'    => [
+    'services' => [
         'integrations' => [
             'mautic.integration.transaction' => [
-                'class'     => \MauticPlugin\MauticTransactionBundle\Integration\TransactionIntegration::class,
+                'class' => \MauticPlugin\MauticTransactionBundle\Integration\TransactionIntegration::class,
                 'arguments' => [
                     'event_dispatcher',
                     'mautic.helper.cache_storage',
@@ -43,8 +58,8 @@ return [
         ],
         'repositories' => [
             'mautic.transaction.repository.transaction' => [
-                'class'     => Doctrine\ORM\EntityRepository::class,
-                'factory'   => ['@doctrine.orm.entity_manager', 'getRepository'],
+                'class' => Doctrine\ORM\EntityRepository::class,
+                'factory' => ['@doctrine.orm.entity_manager', 'getRepository'],
                 'arguments' => [
                     \MauticPlugin\MauticTransactionBundle\Entity\Transaction::class,
                 ],
@@ -52,7 +67,7 @@ return [
         ],
         'models' => [
             'mautic.transaction.model.transaction' => [
-                'class'     => \MauticPlugin\MauticTransactionBundle\Model\TransactionModel::class,
+                'class' => \MauticPlugin\MauticTransactionBundle\Model\TransactionModel::class,
                 'arguments' => [
                     'service_container',
                 ],
@@ -62,12 +77,13 @@ return [
     'menu' => [
         'main' => [
             'transaction.menu.index' => [
-                'id'        => 'mautic_transaction_index',
-                'route'     => 'mautic_transaction_index',
+                'id' => 'mautic_transaction_index',
+                'route' => 'mautic_transaction_index',
                 'iconClass' => 'fa-exchange',
-                'access'    => 'transaction:transaction:view',
-                'priority'  => 1,
+                //                'access' => 'transaction:transaction:view',
+                'priority' => 1,
             ],
         ],
+
     ],
-  ];
+];

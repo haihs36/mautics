@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1c9182297ba8c5c4fd7df5c021531807",
+    "content-hash": "228f9527d422a0ffb1f63c6d0f8c5fb6",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -5671,6 +5671,49 @@
                 "wiki": "https://dev.matomo.org/"
             },
             "time": "2021-09-20T12:34:12+00:00"
+        },
+        {
+            "name": "mautic/api-library",
+            "version": "3.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mautic/api-library.git",
+                "reference": "5b0d9051a3a42eea132fa6da35b712e947804d2c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mautic/api-library/zipball/5b0d9051a3a42eea132fa6da35b712e947804d2c",
+                "reference": "5b0d9051a3a42eea132fa6da35b712e947804d2c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "php": ">=7.2.0",
+                "psr/log": "~1.0 || ~2.0 || ~3.0"
+            },
+            "require-dev": {
+                "brianium/paratest": "^6.2",
+                "friendsofphp/php-cs-fixer": "~2.16.1",
+                "kint-php/kint": "^4.1",
+                "phpunit/phpunit": "~9.5.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Mautic\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Mautic API Connector Library",
+            "support": {
+                "issues": "https://github.com/mautic/api-library/issues",
+                "source": "https://github.com/mautic/api-library/tree/3.1.0"
+            },
+            "time": "2022-05-04T13:59:18+00:00"
         },
         {
             "name": "mautic/core-lib",

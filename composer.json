@@ -22,6 +22,7 @@
     },
   "require": {
     "composer/installers": "^1.11",
+    "mautic/api-library": "*",
     "mautic/core-lib": "^4.0",
     "php-http/message-factory": "*"
   },

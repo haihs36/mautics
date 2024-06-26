@@ -570,6 +570,7 @@ class LeadApiController extends CommonApiController
             $entity = $this->model->checkForDuplicateContact($this->entityRequestParameters, $entity);
         }
 
+
         $manipulatorObject = $this->inBatchMode ? 'api-batch' : 'api-single';
 
         $entity->setManipulator(new LeadManipulator(
