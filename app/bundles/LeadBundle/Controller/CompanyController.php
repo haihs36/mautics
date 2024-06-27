@@ -64,6 +64,7 @@ class CompanyController extends FormController
             ]
         );
 
+
         $this->get('session')->set('mautic.company.filter', $search);
 
         $count     = $companies['count'];

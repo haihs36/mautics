@@ -58,6 +58,7 @@ final class LeadEvents
      */
     const LEAD_COMPANY_CHANGE = 'mautic.lead_company_change';
 
+
     /**
      * The mautic.lead_list_change event is dispatched if a lead's lists changes.
      *
@@ -725,4 +726,5 @@ final class LeadEvents
      * @var string
      */
     const LEAD_FIELD_PRE_ADD_COLUMN_BACKGROUND_JOB = 'mautic.lead_field_pre_add_column_background_job';
+
 }

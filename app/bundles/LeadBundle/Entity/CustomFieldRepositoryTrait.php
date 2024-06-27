@@ -28,10 +28,8 @@ trait CustomFieldRepositoryTrait
     public function getEntitiesWithCustomFields($object, $args, $resultsCallback = null)
     {
         [$fields, $fixedFields] = $this->getCustomFieldList($object);
-
         //Fix arguments if necessary
         $args = $this->convertOrmProperties($this->getClassName(), $args);
-
         //DBAL
         /** @var QueryBuilder $dq */
         $dq = isset($args['qb']) ? $args['qb'] : $this->getEntitiesDbalQueryBuilder();

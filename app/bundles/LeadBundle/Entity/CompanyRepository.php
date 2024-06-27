@@ -84,7 +84,8 @@ class CompanyRepository extends CommonRepository implements CustomFieldRepositor
      */
     public function getEntities(array $args = [])
     {
-        return $this->getEntitiesWithCustomFields('company', $args);
+        $data = $this->getEntitiesWithCustomFields('company', $args);
+        return  $data;
     }
 
     /**

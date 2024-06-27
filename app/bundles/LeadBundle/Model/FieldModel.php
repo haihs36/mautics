@@ -58,6 +58,11 @@ class FieldModel extends FormModel
             'listable' => true,
             'object'   => 'lead',
         ],
+        'event' => [
+            'fixed'    => true,
+            'listable' => true,
+            'object'   => 'lead',
+        ],
         'position' => [
             'fixed'    => true,
             'listable' => true,
@@ -196,7 +201,6 @@ class FieldModel extends FormModel
     ];
 
     public static $coreCompanyFields = [
-        // Listed according to $order for installation
         'companyaddress1' => [
             'fixed'    => true,
             'listable' => true,
