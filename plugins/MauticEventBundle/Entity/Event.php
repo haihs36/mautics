@@ -37,25 +37,12 @@ class Event extends FormEntity implements CustomFieldEntityInterface, Identifier
      */
     private $socialCache = [];
 
-    private $email;
-
-    private $phone;
-
-    private $city;
-
-    private $state;
-
-    private $zipcode;
-
-    private $country;
-
+    /**
+     * @var string|null
+     *
+     * @ORM\Column(type="string", nullable=true)
+     */
     private $name;
-
-    private $website;
-
-    private $industry;
-
-    private $description;
 
     public function __clone()
     {
@@ -141,7 +128,7 @@ class Event extends FormEntity implements CustomFieldEntityInterface, Identifier
     {
         return [
             'meeyid',
-            'eventname',
+            'name',
             'platform',
         ];
     }
@@ -266,185 +253,5 @@ class Event extends FormEntity implements CustomFieldEntityInterface, Identifier
         return $this;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getEmail()
-    {
-        return $this->email;
-    }
 
-    /**
-     * @param mixed $email
-     *
-     * @return Event
-     */
-    public function setEmail($email)
-    {
-        $this->email = $email;
-
-        return $this;
-    }
-
-
-
-    /**
-     * @return mixed
-     */
-    public function getPhone()
-    {
-        return $this->phone;
-    }
-
-    /**
-     * @param mixed $phone
-     *
-     * @return Event
-     */
-    public function setPhone($phone)
-    {
-        $this->phone = $phone;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getCity()
-    {
-        return $this->city;
-    }
-
-    /**
-     * @param mixed $city
-     *
-     * @return Event
-     */
-    public function setCity($city)
-    {
-        $this->city = $city;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getState()
-    {
-        return $this->state;
-    }
-
-    /**
-     * @param mixed $state
-     *
-     * @return Event
-     */
-    public function setState($state)
-    {
-        $this->state = $state;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getZipcode()
-    {
-        return $this->zipcode;
-    }
-
-    /**
-     * @param mixed $zipcode
-     *
-     * @return Event
-     */
-    public function setZipcode($zipcode)
-    {
-        $this->zipcode = $zipcode;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getCountry()
-    {
-        return $this->country;
-    }
-
-    /**
-     * @param mixed $country
-     *
-     * @return Event
-     */
-    public function setCountry($country)
-    {
-        $this->country = $country;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getWebsite()
-    {
-        return $this->website;
-    }
-
-    /**
-     * @param mixed $website
-     *
-     * @return Event
-     */
-    public function setWebsite($website)
-    {
-        $this->website = $website;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getIndustry()
-    {
-        return $this->industry;
-    }
-
-    /**
-     * @param mixed $industry
-     *
-     * @return Event
-     */
-    public function setIndustry($industry)
-    {
-        $this->industry = $industry;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getDescription()
-    {
-        return $this->description;
-    }
-
-    /**
-     * @param mixed $description
-     *
-     * @return Event
-     */
-    public function setDescription($description)
-    {
-        $this->description = $description;
-
-        return $this;
-    }
 }

@@ -1,19 +1,11 @@
 <?php
 
-/*
- * @copyright   2014 Mautic Contributors. All rights reserved
- * @author      Mautic
- *
- * @link        http://mautic.org
- *
- * @license     GNU/GPLv3 http://www.gnu.org/licenses/gpl-3.0.html
- */
 if ('index' == $tmpl) {
     $view->extend('MauticEventBundle:Event:index.html.php');
 }
 ?>
 
-<?php if (count($items)): ?>
+<?php if (count($items)):  ?>
     <div class="table-responsive page-list">
         <table class="table table-hover table-striped table-bordered event-list" id="eventTable">
             <thead>
@@ -35,18 +27,18 @@ if ('index' == $tmpl) {
                     'MauticCoreBundle:Helper:tableheader.html.php',
                     [
                         'sessionVar' => 'event',
-                        'text'       => 'mautic.event.meeyid',
-                        'class'      => 'col-event-meeyid',
-                        'orderBy'    => 'e.eventmeeyid',
+                        'text'       => 'mautic.event.name',
+                        'class'      => 'col-event-name',
+                        'orderBy'    => 'e.eventname',
                     ]
                 );
                 echo $view->render(
                     'MauticCoreBundle:Helper:tableheader.html.php',
                     [
                         'sessionVar' => 'event',
-                        'text'       => 'mautic.event.name',
+                        'text'       => 'mautic.event.meeyid',
                         'class'      => 'visible-md visible-lg col-event-category',
-                        'orderBy'    => 'e.eventname',
+                        'orderBy'    => 'e.eventmeeyid',
                     ]
                 );
                 echo $view->render(
@@ -109,42 +101,42 @@ if ('index' == $tmpl) {
                     <td>
                         <div>
                             <?php if ($view['security']->hasEntityAccess(
-                                       $permissions['lead:leads:editown'],
-                                       $permissions['lead:leads:editother'],
-                                       $item->getCreatedBy()
-                                       )
-                                   ): ?>
+                                $permissions['lead:leads:editown'],
+                                $permissions['lead:leads:editother'],
+                                $item->getCreatedBy()
+                            )
+                            ): ?>
 
-                            <a href="<?php echo $view['router']->url(
-                                'mautic_event_action',
-                                ['objectAction' => 'view', 'objectId' => $item->getId()]
-                            ); ?>" data-toggle="ajax">
-                                <?php if (isset($fields['social']['eventmeeyid'])) : ?>
-                                    <?php echo $view->escape($fields['social']['eventmeeyid']['value']); ?>
+                                <a href="<?php echo $view['router']->url(
+                                    'mautic_event_action',
+                                    ['objectAction' => 'view', 'objectId' => $item->getId()]
+                                ); ?>" data-toggle="ajax">
+                                    <?php if (isset($fields['social']['eventname'])) : ?>
+                                        <?php echo $view->escape($fields['social']['eventname']['value']); ?>
+                                    <?php endif; ?>
+                                </a>
+                            <?php else: ?>
+                                <?php if (isset($fields['social']['eventname'])) : ?>
+                                    <?php echo $view->escape($fields['social']['eventname']['value']); ?>
                                 <?php endif; ?>
-                            </a>
-                        <?php else: ?>
-                            <?php if (isset($fields['social']['eventname'])) : ?>
-                                <?php echo $view->escape($fields['social']['eventname']['value']); ?>
                             <?php endif; ?>
-                        <?php endif; ?>
                         </div>
                     </td>
                     <td>
-                        <?php if (isset($fields['social']['eventemail'])): ?>
+                        <?php if (isset($fields['social']['eventmeeyid'])): ?>
                         <div class="text-muted mt-4">
                             <small>
-                                <?php echo $view->escape($fields['social']['eventemail']['value']); ?>
+                                <?php echo $view->escape($fields['social']['eventmeeyid']['value']); ?>
                             </small>
                         </div>
                         <?php endif; ?>
                     </td>
 
-<!--                    <td class="visible-md visible-lg">-->
-<!--                        --><?php //if (isset($fields['core']['eventwebsite'])) :?>
-<!--                        --><?php //echo \Mautic\CoreBundle\Helper\InputHelper::url($fields['core']['eventwebsite']['value']); ?>
-<!--                        --><?php //endif; ?>
-<!--                    </td>-->
+                    <td class="visible-md visible-lg">
+                        <?php if (isset($fields['social']['platform'])) :?>
+                        <?php echo $fields['social']['platform']['value']; ?>
+                        <?php endif; ?>
+                    </td>
                     <td class="visible-md visible-lg">
                         <?php echo $item->getScore(); ?>
                     </td>

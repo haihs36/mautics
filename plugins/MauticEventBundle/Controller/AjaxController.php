@@ -13,7 +13,7 @@ use Mautic\LeadBundle\Entity\UtmTag;
 use Mautic\LeadBundle\Event\LeadTimelineEvent;
 use Mautic\LeadBundle\Form\Type\FilterPropertiesType;
 use Mautic\LeadBundle\Helper\FormFieldHelper;
-use Mautic\LeadBundle\LeadEvents;
+use MauticPlugin\MauticEventBundle\LeadEventPlugins;
 use MauticPlugin\MauticEventBundle\Model\EventModel;
 use Mautic\LeadBundle\Model\DoNotContact as DoNotContactModel;
 use Mautic\LeadBundle\Model\FieldModel;
@@ -346,7 +346,7 @@ class AjaxController extends CommonAjaxController
                 // Trigger the TIMELINE_ON_GENERATE event to fetch the timeline events from subscribed bundles
                 $dispatcher = $this->dispatcher;
                 $event      = new LeadTimelineEvent($lead, $filter);
-                $dispatcher->dispatch(LeadEvents::TIMELINE_ON_GENERATE, $event);
+                $dispatcher->dispatch(LeadEventPlugins::TIMELINE_ON_GENERATE, $event);
 
                 $events     = $event->getEvents();
                 $eventTypes = $event->getEventTypes();

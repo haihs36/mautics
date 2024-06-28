@@ -7,8 +7,8 @@ use Doctrine\ORM\QueryBuilder;
 use Mautic\CoreBundle\Entity\CommonRepository;
 use Mautic\LeadBundle\Entity\CustomFieldRepositoryInterface;
 use Mautic\LeadBundle\Entity\CustomFieldRepositoryTrait;
-use Mautic\LeadBundle\LeadEvents;
 use MauticPlugin\MauticEventBundle\Event\EventBuildSearchEvent;
+use MauticPlugin\MauticEventBundle\LeadEventPlugins;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -54,11 +54,11 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
             $q = $this->createQueryBuilder($this->getTableAlias());
             if (is_array($id)) {
                 $this->buildSelectClause($q, $id);
-                $eventId = (int) $id['id'];
+                $eventId = (int)$id['id'];
             } else {
                 $eventId = $id;
             }
-            $q->andWhere($this->getTableAlias().'.id = '.(int) $eventId);
+            $q->andWhere($this->getTableAlias() . '.id = ' . (int)$eventId);
             $entity = $q->getQuery()->getSingleResult();
         } catch (\Exception $e) {
             $entity = null;
@@ -86,8 +86,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
      */
     public function getEntities(array $args = [])
     {
-
-        $events =  $this->getEntitiesWithCustomFields('event', $args);
+        $events = $this->getEntitiesWithCustomFields('event', $args);
         return $events;
     }
 
@@ -97,7 +96,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
     public function getEntitiesDbalQueryBuilder()
     {
         return $this->getEntityManager()->getConnection()->createQueryBuilder()
-            ->from(MAUTIC_TABLE_PREFIX.'events', $this->getTableAlias());
+            ->from(MAUTIC_TABLE_PREFIX . 'events', $this->getTableAlias());
     }
 
     /**
@@ -108,8 +107,8 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
     public function getEntitiesOrmQueryBuilder($order)
     {
         $q = $this->getEntityManager()->createQueryBuilder();
-        $q->select($this->getTableAlias().','.$order)
-            ->from('MauticEventBundle:Event', $this->getTableAlias(), $this->getTableAlias().'.id');
+        $q->select($this->getTableAlias() . ',' . $order)
+            ->from('MauticEventBundle:Event', $this->getTableAlias(), $this->getTableAlias() . '.id');
 
         return $q;
     }
@@ -136,8 +135,8 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
         $q = $this->getEntityManager()->getConnection()->createQueryBuilder();
 
         $q->select('e.id, e.eventname, e.eventcity, e.eventcountry, cl.is_primary')
-            ->from(MAUTIC_TABLE_PREFIX.'events', 'e')
-            ->leftJoin('e', MAUTIC_TABLE_PREFIX.'events_leads', 'cl', 'cl.event_id = e.id')
+            ->from(MAUTIC_TABLE_PREFIX . 'events', 'e')
+            ->leftJoin('e', MAUTIC_TABLE_PREFIX . 'events_leads', 'cl', 'cl.event_id = e.id')
             ->where('cl.lead_id = :leadId')
             ->setParameter('leadId', $leadId)
             ->orderBy('cl.is_primary', 'DESC');
@@ -178,27 +177,27 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
     protected function addSearchCommandWhereClause($q, $filter)
     {
         list($expr, $parameters) = $this->addStandardSearchCommandWhereClause($q, $filter);
-        $unique                  = $this->generateRandomParameterName();
-        $returnParameter         = true;
-        $command                 = $filter->command;
+        $unique = $this->generateRandomParameterName();
+        $returnParameter = true;
+        $command = $filter->command;
 
         if (in_array($command, $this->availableSearchFields)) {
-            $expr = $q->expr()->like($this->getTableAlias().".$command", ":$unique");
+            $expr = $q->expr()->like($this->getTableAlias() . ".$command", ":$unique");
         }
 
         if ($this->dispatcher) {
             $event = new EventBuildSearchEvent($filter->string, $filter->command, $unique, $filter->not, $q);
-            $this->dispatcher->dispatch(LeadEvents::EVENT_BUILD_SEARCH_COMMANDS, $event);
+            $this->dispatcher->dispatch(LeadEventPlugins::EVENT_BUILD_SEARCH_COMMANDS, $event);
             if ($event->isSearchDone()) {
                 $returnParameter = $event->getReturnParameters();
-                $filter->strict  = $event->getStrict();
-                $expr            = $event->getSubQuery();
-                $parameters      = array_merge($parameters, $event->getParameters());
+                $filter->strict = $event->getStrict();
+                $expr = $event->getSubQuery();
+                $parameters = array_merge($parameters, $event->getParameters());
             }
         }
 
         if ($returnParameter) {
-            $string              = ($filter->strict) ? $filter->string : "%{$filter->string}%";
+            $string = ($filter->strict) ? $filter->string : "%{$filter->string}%";
             $parameters[$unique] = $string;
         }
 
@@ -222,27 +221,27 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
     }
 
     /**
-     * @param bool   $user
+     * @param bool $user
      * @param string $id
      *
      * @return array|mixed
      */
     public function getEvents($user = false, $id = '')
     {
-        $q                = $this->_em->getConnection()->createQueryBuilder();
+        $q = $this->_em->getConnection()->createQueryBuilder();
         static $events = [];
 
         if ($user) {
             $user = $this->currentUser;
         }
 
-        $key = (int) $id;
+        $key = (int)$id;
         if (isset($events[$key])) {
             return $events[$key];
         }
 
         $q->select('e.*')
-            ->from(MAUTIC_TABLE_PREFIX.'events', 'e');
+            ->from(MAUTIC_TABLE_PREFIX . 'events', 'e');
 
         if (!empty($id)) {
             $q->where(
@@ -255,7 +254,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
             $q->setParameter('user', $user->getId());
         }
 
-        $q->orderBy('e.eventname', 'ASC');
+        $q->orderBy('e.name', 'ASC');
 
         $results = $q->execute()->fetchAll();
 
@@ -276,7 +275,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
         $q = $this->_em->getConnection()->createQueryBuilder();
 
         $q->select('count(cl.lead_id) as thecount, cl.event_id')
-            ->from(MAUTIC_TABLE_PREFIX.'events_leads', 'cl');
+            ->from(MAUTIC_TABLE_PREFIX . 'events_leads', 'cl');
 
         $returnArray = (is_array($eventIds));
 
@@ -323,7 +322,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
             return [];
         }
         $q->select('e.id, e.eventname, e.eventcity, e.eventcountry, e.eventstate')
-            ->from(MAUTIC_TABLE_PREFIX.'events', 'e');
+            ->from(MAUTIC_TABLE_PREFIX . 'events', 'e');
 
         $q->where(
             $q->expr()->eq('e.eventname', ':eventName')
@@ -361,8 +360,8 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
 
         $qb = $this->getEntityManager()->getConnection()->createQueryBuilder();
         $qb->select('c.*, l.lead_id, l.is_primary')
-            ->from(MAUTIC_TABLE_PREFIX.'events', 'c')
-            ->join('c', MAUTIC_TABLE_PREFIX.'events_leads', 'l', 'l.event_id = c.id')
+            ->from(MAUTIC_TABLE_PREFIX . 'events', 'c')
+            ->join('c', MAUTIC_TABLE_PREFIX . 'events_leads', 'l', 'l.event_id = c.id')
             ->where(
                 $qb->expr()->andX(
                     $qb->expr()->in('l.lead_id', $contacts)
@@ -396,7 +395,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
      */
     public function getEventsByGroup($query, $column)
     {
-        $query->select('count(e.id) as events, '.$column)
+        $query->select('count(e.id) as events, ' . $column)
             ->addGroupBy($column)
             ->andWhere(
                 $query->expr()->andX(
@@ -424,7 +423,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
     }
 
     /**
-     * @param null   $labelColumn
+     * @param null $labelColumn
      * @param string $valueColumn
      *
      * @return array
@@ -440,7 +439,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
 
         $tableName = $this->_em->getClassMetadata($this->getEntityName())->getTableName();
 
-        $class      = '\\'.$this->getClassName();
+        $class = '\\' . $this->getClassName();
         $reflection = new \ReflectionClass(new $class());
 
         // Get the label column if necessary
@@ -452,7 +451,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
             }
         }
 
-        $q->select($prefix.$valueColumn.' as value,
+        $q->select($prefix . $valueColumn . ' as value,
         case
         when (e.eventcountry is not null and e.eventcity is not null) then concat(e.eventname, \' <small>\', eventcity,\', \', eventcountry, \'</small>\')
         when (e.eventcountry is not null) then concat(e.eventname, \' <small>\', e.eventcountry, \'</small>\')
@@ -461,7 +460,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
         end
         as label')
             ->from($tableName, $alias)
-            ->orderBy($prefix.$labelColumn);
+            ->orderBy($prefix . $labelColumn);
 
         if (null !== $expr && $expr->count()) {
             $q->where($expr);
@@ -474,7 +473,7 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
         // Published only
         if ($reflection->hasMethod('getIsPublished')) {
             $q->andWhere(
-                $q->expr()->eq($prefix.'is_published', ':true')
+                $q->expr()->eq($prefix . 'is_published', ':true')
             )
                 ->setParameter('true', true, 'boolean');
         }
@@ -486,11 +485,11 @@ class EventRepository extends CommonRepository implements CustomFieldRepositoryI
     {
         $q = $this->getEntityManager()->getConnection()->createQueryBuilder()
             ->select('c.*')
-            ->from(MAUTIC_TABLE_PREFIX.'events', 'c');
+            ->from(MAUTIC_TABLE_PREFIX . 'events', 'c');
 
         // loop through the fields and
         foreach ($uniqueFieldsWithData as $col => $val) {
-            $q->{$this->getUniqueIdentifiersWherePart()}("c.$col = :".$col)
+            $q->{$this->getUniqueIdentifiersWherePart()}("c.$col = :" . $col)
                 ->setParameter($col, $val);
         }
 

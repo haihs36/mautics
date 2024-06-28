@@ -3,12 +3,14 @@
 namespace MauticPlugin\MauticEventBundle;
 
 /**
- * Class LeadEvents
+ * Class LeadEventPlugins
  * Events available for LeadBundle.
  */
 final class LeadEventPlugins
 {
 
+    const TIMELINE_ON_GENERATE = 'mautic.lead_timeline_on_generate';
+    const EVENT_BUILD_SEARCH_COMMANDS = 'mautic.event_build_search_commands';
     /**
      * The mautic.lead_event_change event is dispatched if a lead's company changes.
      *

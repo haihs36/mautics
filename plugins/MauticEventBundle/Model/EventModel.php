@@ -349,7 +349,7 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
                 'filter' => [
                     'force' => [
                         [
-                            'column' => 'comp.id',
+                            'column' => 'e.id',
                             'expr'   => 'in',
                             'value'  => $searchForEvents,
                         ],
@@ -466,7 +466,7 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
                         'filter' => [
                             'force' => [
                                 [
-                                    'column' => 'comp.id',
+                                    'column' => 'e.id',
                                     'expr'   => 'in',
                                     'value'  => $searchForEvents,
                                 ],
@@ -581,7 +581,7 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
                 $expr      = new ExpressionBuilder($this->em->getConnection());
                 $composite = $expr->andX();
                 $composite->add(
-                    $expr->like("comp.$column", ':filterVar')
+                    $expr->like("e.$column", ':filterVar')
                 );
 
                 // Validate owner permissions
@@ -589,10 +589,10 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
                     $composite->add(
                         $expr->orX(
                             $expr->andX(
-                                $expr->isNull('comp.owner_id'),
-                                $expr->eq('comp.created_by', (int) $this->userHelper->getUser()->getId())
+                                $expr->isNull('e.owner_id'),
+                                $expr->eq('e.created_by', (int) $this->userHelper->getUser()->getId())
                             ),
-                            $expr->eq('comp.owner_id', (int) $this->userHelper->getUser()->getId())
+                            $expr->eq('e.owner_id', (int) $this->userHelper->getUser()->getId())
                         )
                     );
                 }
@@ -815,6 +815,7 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
             return null;
         }
 
+
         $event = !empty($duplicateEvents) ? $duplicateEvents[0] : new Event();
 
         if (!empty($fields['dateAdded']) && !empty($data[$fields['dateAdded']])) {
@@ -836,6 +837,7 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
                 $event->setCreatedBy($createdByUser);
             }
         }
+
         unset($fields['createdByUser']);
 
         if (!empty($fields['modifiedByUser']) && !empty($data[$fields['modifiedByUser']])) {

@@ -95,6 +95,7 @@ class EventController extends FormController
         $eventIds = array_keys($events);
         $leadCounts = (!empty($eventIds)) ? $model->getRepository()->getLeadCount($eventIds) : [];
 
+
         return $this->delegateView(
             [
                 'viewParameters' => [
