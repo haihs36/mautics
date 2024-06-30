@@ -8,6 +8,10 @@ use Mautic\CoreBundle\Helper\Chart\LineChart;
 use Mautic\CoreBundle\Model\AuditLogModel;
 use Mautic\LeadBundle\Entity\Lead;
 use Mautic\LeadBundle\Model\LeadModel;
+use MauticPlugin\MauticEventBundle\Entity\EventRepository;
+use MauticPlugin\MauticEventBundle\Model\EventModel;
+use MauticPlugin\MauticTransactionBundle\Entity\TransactionRepository;
+use MauticPlugin\MauticTransactionBundle\Model\TransactionModel;
 
 trait LeadDetailsTrait
 {
@@ -266,8 +270,122 @@ trait LeadDetailsTrait
             'maxPages' => ceil($logCount / $limit),
         ];
     }
-
-    /**
+	
+	/**
+	 *
+	 * Haihs
+	 * Get event by meeeyID
+	 * @param int $page
+	 * @param int $limit
+	 *
+	 * @return array
+	 */
+	protected function getEventByMeeyId($meeyId,Lead $lead, array $filters = null, array $orderBy = null, $page = 1, $limit = 25)
+	{
+		$session = $this->get('session');
+		
+		if (null == $filters) {
+			$filters = $session->get(
+				'mautic.lead.'.$lead->getId().'.eventlog.filters',
+				[
+					'search'        => '',
+				]
+			);
+		}
+	
+		if (null == $orderBy) {
+			if (!$session->has('mautic.lead.'.$lead->getId().'.eventlog.orderby')) {
+				$session->set('mautic.lead.'.$lead->getId().'.eventlog.orderby', 'date_added');
+				$session->set('mautic.lead.'.$lead->getId().'.eventlog.orderbydir', 'DESC');
+			}
+			
+			$orderBy = [
+				$session->get('mautic.lead.'.$lead->getId().'.eventlog.orderby'),
+				$session->get('mautic.lead.'.$lead->getId().'.eventlog.orderbydir'),
+			];
+		}
+		
+		// Audit Log
+		/** @var EventModel $eventModel */
+		$eventModel = $this->getModel('lead.event');
+		/** @var EventRepository $repo */
+		$repo     = $eventModel->getRepository();
+		$total = $repo->getEventsCount($meeyId, $filters);
+		$data     = $repo->getEventsPaging($meeyId, $filters, $orderBy, $page, $limit);
+		
+		$types = [];
+		
+		return [
+			'events'   => $data,
+			'filters'  => $filters,
+			'order'    => $orderBy,
+			'types'    => $types,
+			'total'    => $total,
+			'page'     => $page,
+			'limit'    => $limit,
+			'maxPages' => ceil($total / $limit),
+		];
+	}
+	
+	/**
+	 *
+	 * Haihs
+	 * Get transaction by meeeyID
+	 * @param int $page
+	 * @param int $limit
+	 *
+	 * @return array
+	 */
+	protected function getTransactionByMeeyId($meeyId,Lead $lead, array $filters = null, array $orderBy = null, $page = 1, $limit = 25)
+	{
+		$session = $this->get('session');
+		
+		if (null == $filters) {
+			$filters = $session->get(
+				'mautic.lead.'.$lead->getId().'.tranlog.filters',
+				[
+					'search'        => '',
+				]
+			);
+		}
+		
+		if (null == $orderBy) {
+			if (!$session->has('mautic.lead.'.$lead->getId().'.tranlog.orderby')) {
+				$session->set('mautic.lead.'.$lead->getId().'.tranlog.orderby', 'date_added');
+				$session->set('mautic.lead.'.$lead->getId().'.tranlog.orderbydir', 'DESC');
+			}
+			
+			$orderBy = [
+				$session->get('mautic.lead.'.$lead->getId().'.tranlog.orderby'),
+				$session->get('mautic.lead.'.$lead->getId().'.tranlog.orderbydir'),
+			];
+		}
+		
+		// Audit Log
+		/** @var TransactionModel $tranModel */
+		$tranModel = $this->getModel('transaction');
+		/** @var TransactionRepository $repo */
+		$repo     = $tranModel->getRepository();
+		$total = $repo->getTransactionsCount($meeyId, $filters);
+		$data     = $repo->getTransactionsPaging($meeyId, $filters, $orderBy, $page, $limit);
+		
+		$types = [];
+		
+		return [
+			'events'   => $data,
+			'filters'  => $filters,
+			'order'    => $orderBy,
+			'types'    => $types,
+			'total'    => $total,
+			'page'     => $page,
+			'limit'    => $limit,
+			'maxPages' => ceil($total / $limit),
+		];
+	}
+	
+	
+	
+	/**
      * @param int $page
      * @param int $limit
      *
@@ -373,7 +491,49 @@ trait LeadDetailsTrait
             'points'      => $points,
         ];
     }
+	
+	/**
+	 * Get an array to create company's engagements graph.
+	 *
+	 * @param array $contacts
+	 *
+	 * @return array
+	 */
+	protected function getEventEngagementData($contacts)
+	{
+		$engagements = [0, 0, 0, 0, 0, 0];
+		$points      = [0, 0, 0, 0, 0, 0];
+		foreach ($contacts as $contact) {
+			$model = $this->getModel('lead.lead');
 
+		// When we change lead data these changes get cached
+			// so we need to clear the entity manager
+			$model->getRepository()->clear();
+			
+			/** @var \Mautic\LeadBundle\Entity\Lead $lead */
+			if (!isset($contact['lead_id'])) {
+				continue;
+			}
+			$lead            = $model->getEntity($contact['lead_id']);
+			if (!$lead instanceof Lead) {
+				continue;
+			}
+			$engagementsData = $this->getStatsCount($lead);
+			
+			$engagements = array_map(function ($a, $b) {
+				return $a + $b;
+			}, $engagementsData['engagements']['byUnit'], $engagements);
+			$points = array_map(function ($points_first_user, $points_second_user) {
+				return $points_first_user + $points_second_user;
+			}, $engagementsData['points'], $points);
+		}
+		
+		return [
+			'engagements' => $engagements,
+			'points'      => $points,
+		];
+	}
+	
     /**
      * Get company graph for points and engagements.
      *
@@ -384,6 +544,33 @@ trait LeadDetailsTrait
     protected function getCompanyEngagementsForGraph($contacts)
     {
         $graphData  = $this->getCompanyEngagementData($contacts);
+        $translator = $this->get('translator');
+
+        $fromDate = new \DateTime('first day of this month 00:00:00');
+        $fromDate->modify('-6 months');
+
+        $toDate = new \DateTime();
+
+        $lineChart  = new LineChart(null, $fromDate, $toDate);
+
+        $lineChart->setDataset($translator->trans('mautic.lead.graph.line.all_engagements'), $graphData['engagements']);
+
+        $lineChart->setDataset($translator->trans('mautic.lead.graph.line.points'), $graphData['points']);
+
+        return $lineChart->render();
+    }
+
+    /**
+     * Haihs
+     * Get event plugin graph for points and engagements.
+     *
+     * @param $contacts
+     *
+     * @return mixed
+     */
+    protected function getEventEngagementsForGraph($contacts)
+    {
+        $graphData  = $this->getEventEngagementData($contacts);
         $translator = $this->get('translator');
 
         $fromDate = new \DateTime('first day of this month 00:00:00');

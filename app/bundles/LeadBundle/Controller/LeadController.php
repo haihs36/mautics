@@ -172,7 +172,7 @@ class LeadController extends FormController
 
         /** @var DoNotContactRepository $dncRepository */
         $dncRepository = $this->getModel('lead.dnc')->getDncRepo();
-
+ 
         return $this->delegateView(
             [
                 'viewParameters' => [
@@ -358,7 +358,6 @@ class LeadController extends FormController
         /* @var \Mautic\LeadBundle\Model\CompanyModel $model */
 
         $companyModel = $this->getModel('lead.company');
-
         $companiesRepo = $companyModel->getRepository();
         $companies     = $companiesRepo->getCompaniesByLeadId($objectId);
         // Set the social profile templates
@@ -387,13 +386,15 @@ class LeadController extends FormController
         /** @var ListModel */
         $model = $this->getModel('lead.list');
         $lists = $model->getRepository()->getLeadLists([$lead], true, true);
-
-        return $this->delegateView(
+	
+	    
+	    return $this->delegateView(
             [
                 'viewParameters' => [
                     'lead'              => $lead,
                     'avatarPanelState'  => $this->request->cookies->get('mautic_lead_avatar_panel', 'expanded'),
                     'fields'            => $fields,
+                    'eventLog'         => $this->getEventByMeeyId($lead->contactmeeyid,$lead),
                     'companies'         => $companies,
                     'lists'             => $lists,
                     'socialProfiles'    => $socialProfiles,

@@ -341,6 +341,15 @@ $view['slots']->set(
                         <?php echo $view['translator']->trans('mautic.lead.lead.tab.auditlog'); ?>
                     </a>
                 </li>
+                <li class="">
+                    <a href="#eventlog-container" role="tab" data-toggle="tab">
+                    <span class="label label-primary mr-sm" id="EventLogCount">
+                        <?php  echo $eventLog['total']; ?>
+                    </span>
+			            <?php echo $view['translator']->trans('mautic.lead.lead.tab.event'); ?>
+                    </a>
+                </li>
+                
                 <?php if ($places): ?>
                     <li class="">
                         <a href="#place-container" role="tab" data-toggle="tab" id="load-lead-map">
@@ -417,6 +426,19 @@ $view['slots']->set(
                 ); ?>
             </div>
             <!--/ #auditlog-container -->
+
+            <!-- #eventlog-containerr -->
+            <div class="tab-pane fade bdr-w-0" id="eventlog-container">
+                <?php echo $view->render(
+                    'MauticLeadBundle:EventLog:list.html.php',
+                    [
+                        'events' => $eventLog,
+                        'lead'   => $lead,
+                        'tmpl'   => 'index',
+                    ]
+                ); ?>
+            </div>
+            <!--/ #eventlog-container -->
 
             <!-- custom content -->
             <?php echo $view['content']->getCustomContent('tabs.content', $mauticTemplateVars); ?>

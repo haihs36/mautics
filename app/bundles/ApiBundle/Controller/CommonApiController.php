@@ -1048,6 +1048,7 @@ class CommonApiController extends AbstractFOSRestController implements MauticCon
         if (isset($parameters['id'])) {
             unset($parameters['id']);
         }
+
         //is an entity being updated or created?
         if ($entity->getId()) {
             $statusCode = Response::HTTP_OK;
@@ -1055,6 +1056,7 @@ class CommonApiController extends AbstractFOSRestController implements MauticCon
         } else {
             $statusCode = Response::HTTP_CREATED;
             $action     = 'new';
+
             // All the properties have to be defined in order for validation to work
             // Bug reported https://github.com/symfony/symfony/issues/19788
             $defaultProperties = $this->getEntityDefaultProperties($entity);
@@ -1099,17 +1101,14 @@ class CommonApiController extends AbstractFOSRestController implements MauticCon
 
         if ($form->isValid()) {
             $this->setCategory($entity, $categoryId);
-
             $preSaveError = $this->preSaveEntity($entity, $form, $submitParams, $action);
 
             if ($preSaveError instanceof Response) {
                 return $preSaveError;
             }
 
-
             try {
                 if ($this->dispatcher->hasListeners(ApiEvents::API_ON_ENTITY_PRE_SAVE)) {
-
                     $this->dispatcher->dispatch(ApiEvents::API_ON_ENTITY_PRE_SAVE, new ApiEntityEvent($entity, $this->entityRequestParameters, $this->request));
                 }
             } catch (\Exception $e) {
@@ -1117,8 +1116,6 @@ class CommonApiController extends AbstractFOSRestController implements MauticCon
             }
 
             $statusCode = $this->saveEntity($entity, $statusCode);
-
-
 
             $headers = [];
             //return the newly created entities location if applicable
@@ -1132,12 +1129,10 @@ class CommonApiController extends AbstractFOSRestController implements MauticCon
                 );
             }
 
-
             try {
                 if ($this->dispatcher->hasListeners(ApiEvents::API_ON_ENTITY_POST_SAVE)) {
                     $this->dispatcher->dispatch(ApiEvents::API_ON_ENTITY_POST_SAVE, new ApiEntityEvent($entity, $this->entityRequestParameters, $this->request));
                 }
-
             } catch (\Exception $e) {
                 return $this->returnError($e->getMessage(), $e->getCode());
             }
@@ -1170,7 +1165,6 @@ class CommonApiController extends AbstractFOSRestController implements MauticCon
 
     protected function saveEntity($entity, int $statusCode): int
     {
-
         $this->model->saveEntity($entity);
 
         return $statusCode;

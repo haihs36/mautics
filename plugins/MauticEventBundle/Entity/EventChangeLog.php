@@ -4,6 +4,7 @@ namespace MauticPlugin\MauticEventBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Mautic\CoreBundle\Doctrine\Mapping\ClassMetadataBuilder;
+use MauticPlugin\MauticSocialBundle\Entity\Lead;
 
 /**
  * Class PointsChangeLog.

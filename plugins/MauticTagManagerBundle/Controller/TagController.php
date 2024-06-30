@@ -82,7 +82,6 @@ class TagController extends FormController
                 'orderByDir' => $orderByDir,
             ]);
 
-
         $count = count($items);
 
         if ($count && $count < ($start + 1)) {

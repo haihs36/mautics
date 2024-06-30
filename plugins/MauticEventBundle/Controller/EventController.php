@@ -51,8 +51,8 @@ class EventController extends FormController
         $start      = $pageHelper->getStart();
         $search     = $this->request->get('search', $this->get('session')->get('mautic.event.filter', ''));
         $filter     = ['string' => $search, 'force' => []];
-        $orderBy    = $this->get('session')->get('mautic.event.orderby', 'e.eventname');
-        $orderByDir = $this->get('session')->get('mautic.event.orderbydir', 'ASC');
+        $orderBy    = $this->get('session')->get('mautic.event.orderby', 'e.id');
+        $orderByDir = $this->get('session')->get('mautic.event.orderbydir', 'DESC');
 
         $events = $this->getModel('lead.event')->getEntities(
             [
@@ -69,7 +69,7 @@ class EventController extends FormController
 
         $count     = $events['count'];
         $events = $events['results'];
-
+ 
         if ($count && $count < ($start + 1)) {
             $lastPage  = $pageHelper->countPage($count);
             $returnUrl = $this->generateUrl('mautic_event_index', ['page' => $lastPage]);
@@ -503,7 +503,7 @@ class EventController extends FormController
     /**
      * Loads a specific event into the detailed panel.
      *
-     * @param $objectId
+     * @param $meeyId
      *
      * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\Response
      */
@@ -516,7 +516,7 @@ class EventController extends FormController
         // so we need to clear the entity manager
         $model->getRepository()->clear();
 
-        /** @var \Mautic\LeadBundle\Entity\Event $event */
+        /** @var Event $event */
         $event = $model->getEntity($objectId);
 
         //set some permissions
@@ -573,14 +573,14 @@ class EventController extends FormController
 
         $fields         = $event->getFields();
         $eventsRepo  = $model->getEventLeadRepository();
-        $contacts       = $eventsRepo->getEventLeads($objectId);
-
-        $leadIds = array_column($contacts, 'lead_id');
-
+ 
+	    // Get contact by event
+        $contacts       = $eventsRepo->getContactByMeeyId($event->eventmeeyid);
+        $leadIds = array_column($contacts, 'id');
         $engagementData = is_array($contacts) ? $this->getEventEngagementsForGraph($contacts) : [];
 
         $contacts = $this->getEventContacts($objectId, null, $leadIds);
-
+	   
         return $this->delegateView(
             [
                 'viewParameters' => [

@@ -956,4 +956,16 @@ class EventModel extends CommonFormModel implements AjaxLookupModelInterface
             ->setDateModified(new \DateTime());
         $this->em->getRepository('MauticLeadBundle:Lead')->saveEntity($lead);
     }
+	
+	
+	/**
+	 * @param $meeyId
+	 * haihs
+	 * @return array
+	 */
+	public function getEventsByMeeyId($meeyId)
+	{
+		return $this->em->getRepository('MauticEventBundle:Event')->getEventsByMeeyId($meeyId);
+	}
+	
 }

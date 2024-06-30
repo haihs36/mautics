@@ -83,6 +83,12 @@ return [
                 'requirements' => [
                     'leadId' => '\d+',
                 ],
+            ],  'mautic_contact_eventlog_action' => [
+                'path'         => '/contacts/eventlog/{leadId}/{page}',
+                'controller'   => 'MauticLeadBundle:Auditlog:index',
+                'requirements' => [
+                    'leadId' => '\d+',
+                ],
             ],
             'mautic_contact_auditlog_export_action' => [
                 'path'         => '/contacts/auditlog/batchExport/{leadId}',

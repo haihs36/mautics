@@ -106,7 +106,6 @@ $view['slots']->set(
     <div class="col-md-9 bg-white height-auto">
         <div class="bg-auto">
             <!--/ lead detail header -->
-
             <!-- lead detail collapseable -->
             <div class="collapse" id="lead-details">
                 <ul class="pt-md nav nav-tabs pr-md pl-md" role="tablist">
@@ -188,7 +187,7 @@ $view['slots']->set(
                         <div class="panel-body box-layout">
                             <div class="col-xs-8 va-m">
                                 <h5 class="text-white dark-md fw-sb mb-xs">
-                                    <?php echo $view['translator']->trans('mautic.lead.field.header.engagements'); ?>
+                                    <?php echo $view['translator']->trans('mautic.event.field.header.engagements'); ?>
                                 </h5>
                             </div>
                             <div class="col-xs-4 va-t text-right">
@@ -203,7 +202,8 @@ $view['slots']->set(
                 </div>
             </div>
         </div>
-        <!-- contacts section -->
+
+<!--         contacts section-->
         <div class="pa-md enage">
             <div class="row">
                 <div class="col-sm-12">
@@ -239,7 +239,7 @@ $view['slots']->set(
             <div class="mt-sm points-panel text-center">
                 <h1>
                     <?php echo $view['translator']->trans(
-                        'mautic.event.score.count',
+                        'mautic.event.score',
                         ['%count%' => $event->getScore()]
                     ); ?>
                 </h1>
@@ -247,7 +247,7 @@ $view['slots']->set(
             </div>
             <div class="panel-heading">
                 <div class="panel-title">
-                    <?php echo $view['translator']->trans('mautic.lead.field.group.event'); ?>
+                    <?php echo $view['translator']->trans('mautic.event.event'); ?>
                 </div>
             </div>
             <div class="panel-body pt-sm">
@@ -259,32 +259,6 @@ $view['slots']->set(
                 <h6 class="fw-sb">
                     <?php echo $view['translator']->trans('mautic.lead.field.address'); ?>
                 </h6>
-                <address class="text-muted">
-                    <?php
-                    $address1 = $event->getAddress1();
-                    if (!empty($address1)) : ?>
-                        <?php echo $view->escape($address1); ?><br>
-                    <?php endif; ?>
-                    <?php
-                        $address2 = $event->getAddress2();
-                        echo (!empty($address2)) ? $view->escape($address2).'<br>' : ''; ?>
-                    <?php echo $view->escape($event->getCity()); ?>
-                    <?php
-                        $zipcode = $event->getZipcode();
-                        echo isset($zipcode) ? $view->escape($zipcode) : ''; ?>
-                    <br>
-                </address>
-
-                <h6 class="fw-sb"><?php echo $view['translator']->trans('mautic.core.type.email'); ?></h6>
-                <p class="text-muted"><?php echo $view->escape($event->getEmail()); ?></p>
-
-                <?php
-                    $phone = $event->getPhone();
-                    if (isset($event)) :
-                ?>
-                    <h6 class="fw-sb"><?php echo $view['translator']->trans('mautic.event.phone'); ?></h6>
-                    <p class="text-muted"><?php echo $view->escape($phone); ?></p>
-                <?php endif; ?>
             </div>
         </div>
         <!--/ form HTML -->

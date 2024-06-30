@@ -83,7 +83,25 @@ class EventLeadRepository extends CommonRepository
 
         return $q->execute()->fetchAll();
     }
-
+	
+	/**
+	 * @param $meeyId
+	 * haihs
+	 * @return array
+	 */
+	public function getContactByMeeyId($meeyId)
+	{
+		$q = $this->_em->getConnection()->createQueryBuilder();
+		$q->select('cl.id')
+			->from(MAUTIC_TABLE_PREFIX.'leads', 'cl');
+		
+		$q->where($q->expr()->eq('cl.contactmeeyid', ':meeyid'))
+			->setParameter(':meeyid', $meeyId);
+		
+		return $q->execute()->fetchAll();
+	}
+	 
+	
     /**
      * @param $leadId
      *

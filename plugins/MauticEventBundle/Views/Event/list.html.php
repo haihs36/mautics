@@ -59,13 +59,7 @@ if ('index' == $tmpl) {
                         'orderBy'    => 'e.score',
                     ]
                 );
-                echo $view->render('MauticCoreBundle:Helper:tableheader.html.php',
-                    [
-                        'sessionVar' => 'event',
-                        'text'       => 'mautic.lead.list.thead.leadcount',
-                        'class'      => 'visible-md visible-lg col-leadlist-leadcount',
-                    ]
-                );
+ 
                 echo $view->render(
                     'MauticCoreBundle:Helper:tableheader.html.php',
                     [
@@ -79,8 +73,8 @@ if ('index' == $tmpl) {
             </tr>
             </thead>
             <tbody>
-            <?php foreach ($items as $item): ?>
-                <?php $fields = $item->getFields();  ?>
+            <?php foreach ($items as $item):  ?>
+                <?php $fields = $item->getFields(); ?>
                 <tr>
                     <td>
                         <?php
@@ -111,49 +105,36 @@ if ('index' == $tmpl) {
                                     'mautic_event_action',
                                     ['objectAction' => 'view', 'objectId' => $item->getId()]
                                 ); ?>" data-toggle="ajax">
-                                    <?php if (isset($fields['social']['eventname'])) : ?>
-                                        <?php echo $view->escape($fields['social']['eventname']['value']); ?>
+                                    <?php if (($item->eventname)) : ?>
+                                        <?php echo $view->escape($item->eventname) ?>
                                     <?php endif; ?>
                                 </a>
                             <?php else: ?>
-                                <?php if (isset($fields['social']['eventname'])) : ?>
-                                    <?php echo $view->escape($fields['social']['eventname']['value']); ?>
+	                            <?php if ($item->eventname) : ?>
+		                            <?php echo $view->escape($item->eventname) ?>
                                 <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </td>
                     <td>
-                        <?php if (isset($fields['social']['eventmeeyid'])): ?>
+	                    <?php if ($item->eventmeeyid) : ?>
                         <div class="text-muted mt-4">
                             <small>
-                                <?php echo $view->escape($fields['social']['eventmeeyid']['value']); ?>
+	                            <?php echo $view->escape($item->eventmeeyid) ?>
                             </small>
                         </div>
                         <?php endif; ?>
                     </td>
 
                     <td class="visible-md visible-lg">
-                        <?php if (isset($fields['social']['platform'])) :?>
-                        <?php echo $fields['social']['platform']['value']; ?>
+                        <?php if (isset($fields['core']['eventplatform'])) :?>
+                        <?php echo $fields['core']['eventplatform']['value']; ?>
                         <?php endif; ?>
                     </td>
                     <td class="visible-md visible-lg">
                         <?php echo $item->getScore(); ?>
                     </td>
-                    <td class="visible-md visible-lg">
-                        <a class="label label-primary" href="<?php
-                        echo $view['router']->path(
-                            'mautic_contact_index',
-                            [
-                                'search' => $view['translator']->trans('mautic.lead.lead.searchcommand.event_id').':'.$item->getId(),
-                            ]
-                        ); ?>" data-toggle="ajax"<?php echo (0 == $leadCounts[$item->getId()]) ? 'disabled=disabled' : ''; ?>>
-                            <?php echo $view['translator']->trans(
-                                'mautic.lead.event.viewleads_count',
-                                ['%count%' => $leadCounts[$item->getId()]]
-                            ); ?>
-                        </a>
-                    </td>
+
                     <td class="visible-md visible-lg"><?php echo $item->getId(); ?></td>
                 </tr>
             <?php endforeach; ?>

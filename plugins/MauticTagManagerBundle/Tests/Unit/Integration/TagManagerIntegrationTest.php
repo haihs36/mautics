@@ -2,14 +2,14 @@
 
 namespace MauticPlugin\MauticTagManagerBundle\Tests\Unit\Integration;
 
-use MauticPlugin\MauticTagManagerBundle\Integration\TransactionIntegration;
+use MauticPlugin\MauticTagManagerBundle\Integration\TagManagerIntegration;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 
 class TagManagerIntegrationTest extends TestCase
 {
     /**
-     * @var TransactionIntegration
+     * @var TagManagerIntegration
      */
     private $tagManagerIntegration;
 
@@ -17,7 +17,7 @@ class TagManagerIntegrationTest extends TestCase
     {
         parent::setUp();
 
-        $this->tagManagerIntegration = new class() extends TransactionIntegration {
+        $this->tagManagerIntegration = new class() extends TagManagerIntegration {
             public function __construct()
             {
             }
@@ -27,7 +27,7 @@ class TagManagerIntegrationTest extends TestCase
     public function testGetNameReturnsName(): void
     {
         $name = $this->tagManagerIntegration->getName();
-        Assert::assertSame(TransactionIntegration::PLUGIN_NAME, $name);
+        Assert::assertSame(TagManagerIntegration::PLUGIN_NAME, $name);
     }
 
     public function testGetDisplayNameReturnsName(): void

@@ -34,6 +34,5 @@
             ['form' => $form, 'groups' => $groups, 'fields' => $fields, 'embedded' => true]
         ); ?>
     </div>
-    </div>
 
 <?php echo $view['form']->end($form); ?>
