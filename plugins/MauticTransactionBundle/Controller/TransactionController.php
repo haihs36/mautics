@@ -1,23 +1,29 @@
 <?php
 
-namespace MauticPlugin\MauticEventBundle\Controller;
+namespace MauticPlugin\MauticTransactionBundle\Controller;
 
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
+use Doctrine\ORM\EntityNotFoundException;
 use Mautic\CoreBundle\Controller\FormController;
 use Mautic\CoreBundle\Factory\PageHelperFactoryInterface;
 use Mautic\CoreBundle\Helper\InputHelper;
-use Mautic\LeadBundle\Controller\LeadDetailsTrait;
-use MauticPlugin\MauticEventBundle\Entity\Event;
-use MauticPlugin\MauticEventBundle\Form\Type\EventMergeType;
-use MauticPlugin\MauticEventBundle\Model\EventModel;
+use Mautic\LeadBundle\Entity\Tag;
+use Mautic\LeadBundle\Form\Type\CompanyMergeType;
+use Mautic\LeadBundle\Model\CompanyModel;
+use Mautic\LeadBundle\Model\TagModel;
+use MauticPlugin\MauticTransactionBundle\Entity\Transaction;
+use MauticPlugin\MauticTransactionBundle\Model\TransactionModel;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
-class EventController extends FormController
+class TransactionController extends FormController
 {
 	/*update*/
-    use LeadDetailsTrait;
-
     /**
+     * Generate's default list view.
+     *
      * @param int $page
      *
      * @return JsonResponse|Response
@@ -46,16 +52,17 @@ class EventController extends FormController
 
         /** @var PageHelperFactoryInterface $pageHelperFacotry */
         $pageHelperFacotry = $this->get('mautic.page.helper.factory');
-        $pageHelper        = $pageHelperFacotry->make('mautic.event', $page);
+        $pageHelper        = $pageHelperFacotry->make('mautic.transaction', $page);
 
         $limit      = $pageHelper->getLimit();
         $start      = $pageHelper->getStart();
-        $search     = $this->request->get('search', $this->get('session')->get('mautic.event.filter', ''));
+        $search     = $this->request->get('search', $this->get('session')->get('mautic.transaction.filter', ''));
         $filter     = ['string' => $search, 'force' => []];
-        $orderBy    = $this->get('session')->get('mautic.event.orderby', 'e.id');
-        $orderByDir = $this->get('session')->get('mautic.event.orderbydir', 'DESC');
+        $orderBy    = $this->get('session')->get('mautic.transaction.orderby', 't.name');
+        $orderByDir = $this->get('session')->get('mautic.transaction.orderbydir', 'ASC');
 
-        $events = $this->getModel('lead.event')->getEntities(
+      
+        $transactions = $this->getModel('transaction')->getEntities(
             [
                 'start'          => $start,
                 'limit'          => $limit,
@@ -66,24 +73,24 @@ class EventController extends FormController
             ]
         );
 
-        $this->get('session')->set('mautic.event.filter', $search);
+        $this->get('session')->set('mautic.transaction.filter', $search);
 
-        $count     = $events['count'];
-        $events = $events['results'];
- 
+        $count     = $transactions['count'];
+        $transactions = $transactions['results'];
+
         if ($count && $count < ($start + 1)) {
             $lastPage  = $pageHelper->countPage($count);
-            $returnUrl = $this->generateUrl('mautic_event_index', ['page' => $lastPage]);
+            $returnUrl = $this->generateUrl('mautic_transaction_index', ['page' => $lastPage]);
             $pageHelper->rememberPage($lastPage);
 
             return $this->postActionRedirect(
                 [
                     'returnUrl'       => $returnUrl,
                     'viewParameters'  => ['page' => $lastPage],
-                    'contentTemplate' => 'MauticEventBundle:Event:index',
+                    'contentTemplate' => 'MauticTransactionBundle:Transaction:index',
                     'passthroughVars' => [
-                        'activeLink'    => '#mautic_event_index',
-                        'mauticContent' => 'event',
+                        'activeLink'    => '#mautic_transaction_index',
+                        'mauticContent' => 'transaction',
                     ],
                 ]
             );
@@ -92,103 +99,39 @@ class EventController extends FormController
         $pageHelper->rememberPage($page);
 
         $tmpl       = $this->request->isXmlHttpRequest() ? $this->request->get('tmpl', 'index') : 'index';
-        $model      = $this->getModel('lead.event');
-        $eventIds = array_keys($events);
-        $leadCounts = (!empty($eventIds)) ? $model->getRepository()->getLeadCount($eventIds) : [];
-
 
         return $this->delegateView(
             [
                 'viewParameters' => [
                     'searchValue' => $search,
-                    'leadCounts'  => $leadCounts,
-                    'items'       => $events,
+                    'items'       => $transactions,
                     'page'        => $page,
                     'limit'       => $limit,
                     'permissions' => $permissions,
                     'tmpl'        => $tmpl,
                     'totalItems'  => $count,
                 ],
-                'contentTemplate' => 'MauticEventBundle:Event:list.html.php',
+                'contentTemplate' => 'MauticTransactionBundle:Transaction:list.html.php',
                 'passthroughVars' => [
-                    'activeLink'    => '#mautic_event_index',
-                    'mauticContent' => 'event',
-                    'route'         => $this->generateUrl('mautic_event_index', ['page' => $page]),
+                    'activeLink'    => '#mautic_transaction_index',
+                    'mauticContent' => 'transaction',
+                    'route'         => $this->generateUrl('mautic_transaction_index', ['page' => $page]),
                 ],
             ]
         );
     }
 
     /**
-     * Refresh contacts list in event view with new parameters like order or page.
+     * Generate's new form and processes post data.
      *
-     * @param int $objectId event id
-     * @param int $page
-     *
-     * @return JsonResponse|\Symfony\Component\HttpFoundation\RedirectResponse|Response
-     */
-    public function contactsListAction($objectId, $page = 1)
-    {
-        if (empty($objectId)) {
-            return $this->accessDenied();
-        }
-
-        //set some permissions
-        $permissions = $this->get('mautic.security')->isGranted(
-            [
-                'lead:leads:viewown',
-                'lead:leads:viewother',
-                'lead:leads:create',
-                'lead:leads:editown',
-                'lead:leads:editother',
-                'lead:leads:deleteown',
-                'lead:leads:deleteother',
-            ],
-            'RETURN_ARRAY'
-        );
-
-        /** @var EventModel $model */
-        $model  = $this->getModel('lead.event');
-
-        /** @var \Mautic\LeadBundle\Entity\Event $event */
-        $event = $model->getEntity($objectId);
-
-        $eventsRepo  = $model->getEventLeadRepository();
-        $contacts       = $eventsRepo->getEventLeads($objectId);
-
-        $leadIds = array_column($contacts, 'lead_id');
-
-        $data = $this->getEventContacts($objectId, $page, $leadIds);
-
-        return $this->delegateView(
-            [
-                'viewParameters' => [
-                    'event'     => $event,
-                    'page'        => $data['page'],
-                    'contacts'    => $data['items'],
-                    'totalItems'  => $data['count'],
-                    'limit'       => $data['limit'],
-                    'permissions' => $permissions,
-                    'security'    => $this->get('mautic.security'),
-                ],
-                'contentTemplate' => 'MauticEventBundle:Event:list_rows_contacts.html.php',
-            ]
-        );
-    }
-
-    /**
-     * Generates new form and processes post data.
-     *
-     * @param \Mautic\LeadBundle\Entity\Event $entity
-     *
-     * @return JsonResponse|\Symfony\Component\HttpFoundation\RedirectResponse|Response
+     * @return JsonResponse|RedirectResponse|Response
      */
     public function newAction($entity = null)
     {
-        $model = $this->getModel('lead.event');
+        $model = $this->getModel('transaction');
 
-        if (!($entity instanceof Event)) {
-            /** @var \Mautic\LeadBundle\Entity\Event $entity */
+        if (!($entity instanceof Transaction)) {
+            /** @var Transaction $entity */
             $entity = $model->getEntity();
         }
 
@@ -197,22 +140,22 @@ class EventController extends FormController
         }
 
         //set the page we came from
-        $page         = $this->get('session')->get('mautic.event.page', 1);
+        $page         = $this->get('session')->get('mautic.transaction.page', 1);
         $method       = $this->request->getMethod();
-        $action       = $this->generateUrl('mautic_event_action', ['objectAction' => 'new']);
-        $event      = $this->request->request->get('event', []);
+        $action       = $this->generateUrl('mautic_transaction_action', ['objectAction' => 'new']);
+        $transaction      = $this->request->request->get('transaction', []);
         $updateSelect = InputHelper::clean(
             'POST' === $method
-                ? ($event['updateSelect'] ?? false)
+                ? ($transaction['updateSelect'] ?? false)
                 : $this->request->get('updateSelect', false)
         );
 
-        $fields = $this->getModel('lead.field')->getPublishedFieldArrays('event');
+        $fields = $this->getModel('lead.field')->getPublishedFieldArrays('transaction');
         $form   = $model->createForm($entity, $this->get('form.factory'), $action, ['fields' => $fields, 'update_select' => $updateSelect]);
 
         $viewParameters = ['page' => $page];
-        $returnUrl      = $this->generateUrl('mautic_event_index', $viewParameters);
-        $template       = 'MauticEventBundle:Event:index';
+        $returnUrl      = $this->generateUrl('mautic_transaction_index', $viewParameters);
+        $template       = 'MauticTransactionBundle:Transaction:index';
 
         ///Check for a submitted form and process it
         if ('POST' == $this->request->getMethod()) {
@@ -221,7 +164,7 @@ class EventController extends FormController
                 if ($valid = $this->isFormValid($form)) {
                     //form is valid so process the data
                     //get custom field values
-                    $data = $this->request->request->get('event');
+                    $data = $this->request->request->get('transaction');
                     //pull the data from the form in order to apply the form's formatting
                     foreach ($form as $f) {
                         $data[$f->getName()] = $f->getData();
@@ -234,9 +177,9 @@ class EventController extends FormController
                         'mautic.core.notice.created',
                         [
                             '%name%'      => $entity->getName(),
-                            '%menu_link%' => 'mautic_event_index',
+                            '%menu_link%' => 'mautic_transaction_index',
                             '%url%'       => $this->generateUrl(
-                                'mautic_event_action',
+                                'mautic_transaction_action',
                                 [
                                     'objectAction' => 'edit',
                                     'objectId'     => $entity->getId(),
@@ -246,8 +189,8 @@ class EventController extends FormController
                     );
 
                     if ($form->get('buttons')->get('save')->isClicked()) {
-                        $returnUrl = $this->generateUrl('mautic_event_index', $viewParameters);
-                        $template  = 'MauticEventBundle:Event:index';
+                        $returnUrl = $this->generateUrl('mautic_transaction_index', $viewParameters);
+                        $template  = 'MauticTransactionBundle:Transaction:index';
                     } else {
                         //return edit view so that all the session stuff is loaded
                         return $this->editAction($entity->getId(), true);
@@ -256,8 +199,8 @@ class EventController extends FormController
             }
 
             $passthrough = [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ];
 
             // Check to see if this is a popup
@@ -288,7 +231,7 @@ class EventController extends FormController
         $fields = $model->organizeFieldsByGroup($fields);
         $groups = array_keys($fields);
         sort($groups);
-        $template = 'MauticEventBundle:Event:form_'.($this->request->get('modal', false) ? 'embedded' : 'standalone').'.html.php';
+        $template = 'MauticTransactionBundle:Transaction:form_'.($this->request->get('modal', false) ? 'embedded' : 'standalone').'.html.php';
 
         return $this->delegateView(
             [
@@ -301,11 +244,11 @@ class EventController extends FormController
                 ],
                 'contentTemplate' => $template,
                 'passthroughVars' => [
-                    'activeLink'    => '#mautic_event_index',
-                    'mauticContent' => 'event',
+                    'activeLink'    => '#mautic_transaction_index',
+                    'mauticContent' => 'transaction',
                     'updateSelect'  => ('POST' == $this->request->getMethod()) ? $updateSelect : null,
                     'route'         => $this->generateUrl(
-                        'mautic_event_action',
+                        'mautic_transaction_action',
                         [
                             'objectAction' => (!empty($valid) ? 'edit' : 'new'), //valid means a new form was applied
                             'objectId'     => $entity->getId(),
@@ -326,24 +269,24 @@ class EventController extends FormController
      */
     public function editAction($objectId, $ignorePost = false)
     {
-        $model  = $this->getModel('lead.event');
+        $model  = $this->getModel('transaction');
         $entity = $model->getEntity($objectId);
 
         //set the page we came from
-        $page = $this->get('session')->get('mautic.event.page', 1);
+        $page = $this->get('session')->get('mautic.transaction.page', 1);
 
         $viewParameters = ['page' => $page];
 
         //set the return URL
-        $returnUrl = $this->generateUrl('mautic_event_index', ['page' => $page]);
+        $returnUrl = $this->generateUrl('mautic_transaction_index', ['page' => $page]);
 
         $postActionVars = [
             'returnUrl'       => $returnUrl,
             'viewParameters'  => $viewParameters,
-            'contentTemplate' => 'MauticEventBundle:Event:index',
+            'contentTemplate' => 'MauticTransactionBundle:Transaction:index',
             'passthroughVars' => [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ],
         ];
 
@@ -356,7 +299,7 @@ class EventController extends FormController
                         'flashes' => [
                             [
                                 'type'    => 'error',
-                                'msg'     => 'mautic.event.error.notfound',
+                                'msg'     => 'mautic.transaction.error.notfound',
                                 'msgVars' => ['%id%' => $objectId],
                             ],
                         ],
@@ -370,17 +313,17 @@ class EventController extends FormController
             return $this->accessDenied();
         } elseif ($model->isLocked($entity)) {
             //deny access if the entity is locked
-            return $this->isLocked($postActionVars, $entity, 'lead.event');
+            return $this->isLocked($postActionVars, $entity, 'transaction');
         }
 
-        $action       = $this->generateUrl('mautic_event_action', ['objectAction' => 'edit', 'objectId' => $objectId]);
+        $action       = $this->generateUrl('mautic_transaction_action', ['objectAction' => 'edit', 'objectId' => $objectId]);
         $method       = $this->request->getMethod();
-        $event      = $this->request->request->get('event', []);
+        $transaction      = $this->request->request->get('transaction', []);
         $updateSelect = 'POST' === $method
-            ? ($event['updateSelect'] ?? false)
+            ? ($transaction['updateSelect'] ?? false)
             : $this->request->get('updateSelect', false);
 
-        $fields = $this->getModel('lead.field')->getPublishedFieldArrays('event');
+        $fields = $this->getModel('lead.field')->getPublishedFieldArrays('transaction');
         $form   = $model->createForm(
             $entity,
             $this->get('form.factory'),
@@ -394,7 +337,7 @@ class EventController extends FormController
 
             if (!$cancelled = $this->isFormCancelled($form)) {
                 if ($valid = $this->isFormValid($form)) {
-                    $data = $this->request->request->get('event');
+                    $data = $this->request->request->get('transaction');
                     //pull the data from the form in order to apply the form's formatting
                     foreach ($form as $f) {
                         $data[$f->getName()] = $f->getData();
@@ -409,9 +352,9 @@ class EventController extends FormController
                         'mautic.core.notice.updated',
                         [
                             '%name%'      => $entity->getName(),
-                            '%menu_link%' => 'mautic_event_index',
+                            '%menu_link%' => 'mautic_transaction_index',
                             '%url%'       => $this->generateUrl(
-                                'mautic_event_action',
+                                'mautic_transaction_action',
                                 [
                                     'objectAction' => 'view',
                                     'objectId'     => $entity->getId(),
@@ -421,21 +364,21 @@ class EventController extends FormController
                     );
 
                     if ($form->get('buttons')->get('save')->isClicked()) {
-                        $returnUrl = $this->generateUrl('mautic_event_index', $viewParameters);
-                        $template  = 'MauticEventBundle:Event:index';
+                        $returnUrl = $this->generateUrl('mautic_transaction_index', $viewParameters);
+                        $template  = 'MauticTransactionBundle:Transaction:index';
                     }
                 }
             } else {
                 //unlock the entity
                 $model->unlockEntity($entity);
 
-                $returnUrl = $this->generateUrl('mautic_event_index', $viewParameters);
-                $template  = 'MauticEventBundle:Event:index';
+                $returnUrl = $this->generateUrl('mautic_transaction_index', $viewParameters);
+                $template  = 'MauticTransactionBundle:Transaction:index';
             }
 
             $passthrough = [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ];
 
             // Check to see if this is a popup
@@ -462,8 +405,8 @@ class EventController extends FormController
                 );
             } elseif ($valid) {
                 // Refetch and recreate the form in order to populate data manipulated in the entity itself
-                $event = $model->getEntity($objectId);
-                $form    = $model->createForm($event, $this->get('form.factory'), $action, ['fields' => $fields, 'update_select' => $updateSelect]);
+                $transaction = $model->getEntity($objectId);
+                $form    = $model->createForm($transaction, $this->get('form.factory'), $action, ['fields' => $fields, 'update_select' => $updateSelect]);
             }
         } else {
             //lock the entity
@@ -473,7 +416,7 @@ class EventController extends FormController
         $fields = $model->organizeFieldsByGroup($fields);
         $groups = array_keys($fields);
         sort($groups);
-        $template = 'MauticEventBundle:Event:form_'.($this->request->get('modal', false) ? 'embedded' : 'standalone').'.html.php';
+        $template = 'MauticTransactionBundle:Transaction:form_'.($this->request->get('modal', false) ? 'embedded' : 'standalone').'.html.php';
 
         return $this->delegateView(
             [
@@ -486,11 +429,11 @@ class EventController extends FormController
                 ],
                 'contentTemplate' => $template,
                 'passthroughVars' => [
-                    'activeLink'    => '#mautic_event_index',
-                    'mauticContent' => 'event',
+                    'activeLink'    => '#mautic_transaction_index',
+                    'mauticContent' => 'transaction',
                     'updateSelect'  => InputHelper::clean($this->request->query->get('updateSelect')),
                     'route'         => $this->generateUrl(
-                        'mautic_event_action',
+                        'mautic_transaction_action',
                         [
                             'objectAction' => 'edit',
                             'objectId'     => $entity->getId(),
@@ -502,23 +445,180 @@ class EventController extends FormController
     }
 
     /**
-     * Loads a specific event into the detailed panel.
+     * Create modifying response for tags - edit.
      *
-     * @param $meeyId
+     * @param string $action
+     * @param bool   $ignorePost
+     *
+     * @return Response
+     */
+    private function createTagModifyResponse(Tag $tag, array $postActionVars, $action, $ignorePost)
+    {
+        /** @var TagModel $tagModel */
+        $tagModel = $this->getModel('transaction.tag');
+
+        /** @var FormInterface $form */
+        $form = $tagModel->createForm($tag, $this->get('form.factory'), $action);
+
+        ///Check for a submitted form and process it
+        if (!$ignorePost && 'POST' == $this->request->getMethod()) {
+            if (!$cancelled = $this->isFormCancelled($form)) {
+                if ($this->isFormValid($form)) {
+                    // We are editing existing tag.in the database.
+                    $valid        = true;
+                    $existingTags = $tagModel->getRepository()->getTagsByName([$tag->getTag()]);
+                    foreach ($existingTags as $e) {
+                        if ($e->getId() != $tag->getId()) {
+                            $valid = false;
+                            break;
+                        }
+                    }
+
+                    if (!$valid) {
+                        $this->addFlash('mautic.core.notice.updated', [
+                            '%name%'      => $tag->getTag(),
+                            '%menu_link%' => 'mautic_transaction_index',
+                            '%url%'       => $this->generateUrl('mautic_transaction_action', [
+                                'objectAction' => 'edit',
+                                'objectId'     => $tag->getId(),
+                            ]),
+                        ]);
+                    } else {
+                        //form is valid so process the data
+                        $tagModel->saveEntity($tag, $form->get('buttons')->get('save')->isClicked());
+
+                        $this->addFlash('mautic.core.notice.updated', [
+                            '%name%'      => $tag->getTag(),
+                            '%menu_link%' => 'mautic_transaction_index',
+                            '%url%'       => $this->generateUrl('mautic_transaction_action', [
+                                'objectAction' => 'edit',
+                                'objectId'     => $tag->getId(),
+                            ]),
+                        ]);
+                    }
+
+                    if ($form->get('buttons')->get('apply')->isClicked()) {
+                        $contentTemplate                     = 'MauticTransactionBundle:Transaction:form.html.php';
+                        $postActionVars['contentTemplate']   = $contentTemplate;
+                        $postActionVars['forwardController'] = false;
+                        $postActionVars['returnUrl']         = $this->generateUrl('mautic_transaction_action', [
+                            'objectAction' => 'edit',
+                            'objectId'     => $tag->getId(),
+                        ]);
+
+                        // Re-create the form once more with the fresh tag and action.
+                        // The alias was empty on redirect after cloning.
+                        $editAction = $this->generateUrl('mautic_transaction_action', ['objectAction' => 'edit', 'objectId' => $tag->getId()]);
+                        $form       = $tagModel->createForm($tag, $this->get('form.factory'), $editAction);
+
+                        $postActionVars['viewParameters'] = [
+                            'objectAction' => 'edit',
+                            'entity'       => $tag,
+                            'objectId'     => $tag->getId(),
+                            'form'         => $this->setFormTheme($form, $contentTemplate, 'MauticTransactionBundle:FormTheme\Filter'),
+                        ];
+
+                        return $this->postActionRedirect($postActionVars);
+                    } else {
+                        return $this->viewAction($tag->getId());
+                    }
+                }
+            }
+
+            if ($cancelled) {
+                return $this->postActionRedirect($postActionVars);
+            }
+        }
+
+        return $this->delegateView([
+            'viewParameters' => [
+                'form'       => $form->createView(),
+                'entity'     => $tag,
+                'currentTag' => $tag->getId(),
+            ],
+            'contentTemplate' => 'MauticTransactionBundle:Transaction:form.html.php',
+            'passthroughVars' => [
+                'activeLink'    => '#mautic_transaction_index',
+                'route'         => $action,
+                'mauticContent' => 'transaction',
+            ],
+        ]);
+    }
+
+    /**
+     * Return tag if exists and user has access.
+     *
+     * @param int $tagId
+     *
+     * @return Tag
+     *
+     * @throws EntityNotFoundException
+     * @throws AccessDeniedException
+     */
+    private function getTag($tagId)
+    {
+        /** @var Tag $tag */
+        $tag = $this->getModel('lead.tag')->getEntity($tagId);
+
+        // Check if exists
+        if (!$tag instanceof Tag) {
+            throw new EntityNotFoundException(sprintf('Tag with id %d not found.', $tagId));
+        }
+
+        return $tag;
+    }
+
+    /**
+     * Get variables for POST action.
+     *
+     * @param null $objectId
+     *
+     * @return array
+     */
+    private function getPostActionVars($objectId = null)
+    {
+        //set the return URL
+        if ($objectId) {
+            $returnUrl       = $this->generateUrl('mautic_transaction_action', ['objectAction' => 'view', 'objectId'=> $objectId]);
+            $viewParameters  = ['objectAction' => 'view', 'objectId'=> $objectId];
+            $contentTemplate = 'MauticTransactionBundle:Transaction:view';
+        } else {
+            //set the page we came from
+            $page            = $this->get('session')->get('mautic.transaction.page', 1);
+            $returnUrl       = $this->generateUrl('mautic_transaction_index', ['page' => $page]);
+            $viewParameters  = ['page' => $page];
+            $contentTemplate = 'MauticTransactionBundle:Transaction:index';
+        }
+
+        return [
+            'returnUrl'       => $returnUrl,
+            'viewParameters'  => $viewParameters,
+            'contentTemplate' => $contentTemplate,
+            'passthroughVars' => [
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
+            ],
+        ];
+    }
+
+    /**
+     * Loads a specific transaction into the detailed panel.
+     *
+     * @param $objectId
      *
      * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\Response
      */
     public function viewAction($objectId)
     {
-        /** @var EventModel $model */
-        $model  = $this->getModel('lead.event');
+        /** @var Transaction $model */
+        $model  = $this->getModel('transaction');
 
-        // When we change event data these changes get cached
+        // When we change company data these changes get cached
         // so we need to clear the entity manager
         $model->getRepository()->clear();
 
-        /** @var Event $event */
-        $event = $model->getEntity($objectId);
+        /** @var Transaction $transaction */
+        $transaction = $model->getEntity($objectId);
 
         //set some permissions
         $permissions = $this->get('mautic.security')->isGranted(
@@ -535,18 +635,18 @@ class EventController extends FormController
         );
 
         //set the return URL
-        $returnUrl = $this->generateUrl('mautic_event_index');
+        $returnUrl = $this->generateUrl('mautic_transaction_index');
 
         $postActionVars = [
             'returnUrl'       => $returnUrl,
-            'contentTemplate' => 'MauticEventBundle:Event:index',
+            'contentTemplate' => 'MauticTransactionBundle:Transaction:index',
             'passthroughVars' => [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ],
         ];
 
-        if (null === $event) {
+        if (null === $transaction) {
             return $this->postActionRedirect(
                 array_merge(
                     $postActionVars,
@@ -554,7 +654,7 @@ class EventController extends FormController
                         'flashes' => [
                             [
                                 'type'    => 'error',
-                                'msg'     => 'mautic.event.error.notfound',
+                                'msg'     => 'mautic.transaction.error.notfound',
                                 'msgVars' => ['%id%' => $objectId],
                             ],
                         ],
@@ -566,26 +666,26 @@ class EventController extends FormController
         if (!$this->get('mautic.security')->hasEntityAccess(
             'lead:leads:viewown',
             'lead:leads:viewother',
-            $event->getPermissionUser()
+            $transaction->getPermissionUser()
         )
         ) {
             return $this->accessDenied();
         }
 
-        $fields         = $event->getFields();
-        $eventsRepo  = $model->getEventLeadRepository();
- 
-	    // Get contact by event
-        $contacts       = $eventsRepo->getContactByMeeyId($event->eventmeeyid);
-        $leadIds = array_column($contacts, 'id');
-        $engagementData = is_array($contacts) ? $this->getEventEngagementsForGraph($contacts) : [];
+        $fields         = $transaction->getFields();
+        $companiesRepo  = $model->getTransactionLeadRepository();
+        $contacts       = $companiesRepo->getTransactionLeads($objectId);
 
-        $contacts = $this->getEventContacts($objectId, null, $leadIds);
-	   
+        $leadIds = array_column($contacts, 'lead_id');
+
+        $engagementData = is_array($contacts) ? $this->getTransactionEngagementsForGraph($contacts) : [];
+
+        $contacts = $this->getTransactionContacts($objectId, null, $leadIds);
+
         return $this->delegateView(
             [
                 'viewParameters' => [
-                    'event'           => $event,
+                    'transaction'           => $transaction,
                     'fields'            => $fields,
                     'items'             => $contacts['items'],
                     'permissions'       => $permissions,
@@ -595,90 +695,11 @@ class EventController extends FormController
                     'totalItems'        => $contacts['count'],
                     'limit'             => $contacts['limit'],
                 ],
-                'contentTemplate' => 'MauticEventBundle:Event:event.html.php',
+                'contentTemplate' => 'MauticLeadBundle:Transaction:transaction.html.php',
             ]
         );
     }
 
-    /**
-     * Get event's contacts for event view.
-     *
-     * @param int        $eventId
-     * @param int        $page
-     * @param array<int> $leadIds   filter to get only event's contacts
-     *
-     * @return array
-     */
-    public function getEventContacts($eventId, $page = 0, $leadIds = [])
-    {
-        $this->setListFilters();
-
-        /** @var \Mautic\LeadBundle\Model\LeadModel $model */
-        $model   = $this->getModel('lead');
-        $session = $this->get('session');
-        //set limits
-        $limit = $session->get('mautic.event.'.$eventId.'.contacts.limit', $this->get('mautic.helper.core_parameters')->get('default_pagelimit'));
-        $start = (1 === $page) ? 0 : (($page - 1) * $limit);
-        if ($start < 0) {
-            $start = 0;
-        }
-
-        //do some default sorting
-        $orderBy    = $session->get('mautic.event.'.$eventId.'.contacts.orderby', 'l.last_active');
-        $orderByDir = $session->get('mautic.event.'.$eventId.'.contacts.orderbydir', 'DESC');
-
-        // filter by event contacts
-        $filter = [
-          'force' => [
-            ['column' => 'l.id', 'expr' => 'in', 'value' => $leadIds],
-          ],
-        ];
-
-        $results = $model->getEntities([
-            'start'          => $start,
-            'limit'          => $limit,
-            'filter'         => $filter,
-            'orderBy'        => $orderBy,
-            'orderByDir'     => $orderByDir,
-            'withTotalCount' => true,
-        ]);
-
-        $count = $results['count'];
-        unset($results['count']);
-
-        $leads = $results['results'];
-        unset($results);
-
-        return [
-            'items' => $leads,
-            'page'  => $page,
-            'count' => $count,
-            'limit' => $limit,
-        ];
-    }
-
-    /**
-     * Clone an entity.
-     *
-     * @param int $objectId
-     *
-     * @return array|JsonResponse|\Symfony\Component\HttpFoundation\RedirectResponse|Response
-     */
-    public function cloneAction($objectId)
-    {
-        $model  = $this->getModel('lead.event');
-        $entity = $model->getEntity($objectId);
-
-        if (null != $entity) {
-            if (!$this->get('mautic.security')->isGranted('lead:leads:create')) {
-                return $this->accessDenied();
-            }
-
-            $entity = clone $entity;
-        }
-
-        return $this->newAction($entity);
-    }
 
     /**
      * Deletes the entity.
@@ -689,34 +710,34 @@ class EventController extends FormController
      */
     public function deleteAction($objectId)
     {
-        $page      = $this->get('session')->get('mautic.event.page', 1);
-        $returnUrl = $this->generateUrl('mautic_event_index', ['page' => $page]);
+        $page      = $this->get('session')->get('mautic.transaction.page', 1);
+        $returnUrl = $this->generateUrl('mautic_transaction_index', ['page' => $page]);
         $flashes   = [];
 
         $postActionVars = [
             'returnUrl'       => $returnUrl,
             'viewParameters'  => ['page' => $page],
-            'contentTemplate' => 'MauticEventBundle:Event:index',
+            'contentTemplate' => 'MauticTransactionBundle:Transaction:index',
             'passthroughVars' => [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ],
         ];
 
         if ('POST' == $this->request->getMethod()) {
-            $model  = $this->getModel('lead.event');
+            $model  = $this->getModel('transaction');
             $entity = $model->getEntity($objectId);
 
             if (null === $entity) {
                 $flashes[] = [
                     'type'    => 'error',
-                    'msg'     => 'mautic.event.error.notfound',
+                    'msg'     => 'mautic.transaction.error.notfound',
                     'msgVars' => ['%id%' => $objectId],
                 ];
             } elseif (!$this->get('mautic.security')->isGranted('lead:leads:deleteother')) {
                 return $this->accessDenied();
             } elseif ($model->isLocked($entity)) {
-                return $this->isLocked($postActionVars, $entity, 'lead.event');
+                return $this->isLocked($postActionVars, $entity, 'transaction');
             }
 
             $model->deleteEntity($entity);
@@ -744,28 +765,29 @@ class EventController extends FormController
     /**
      * Deletes a group of entities.
      *
-     * @return \Symfony\Component\HttpFoundation\JsonResponse|\Symfony\Component\HttpFoundation\RedirectResponse
+     * @return JsonResponse|RedirectResponse
      */
     public function batchDeleteAction()
     {
-        $page      = $this->get('session')->get('mautic.event.page', 1);
-        $returnUrl = $this->generateUrl('mautic_event_index', ['page' => $page]);
+        $page      = $this->get('session')->get('mautic.transaction.page', 1);
+        $returnUrl = $this->generateUrl('mautic_transaction_index', ['page' => $page]);
         $flashes   = [];
 
         $postActionVars = [
             'returnUrl'       => $returnUrl,
             'viewParameters'  => ['page' => $page],
-            'contentTemplate' => 'MauticEventBundle:Event:index',
+            'contentTemplate' => 'MauticTransactionBundle:Transaction:index',
             'passthroughVars' => [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ],
         ];
 
         if ('POST' == $this->request->getMethod()) {
-            $model     = $this->getModel('lead.event');
-            $ids       = json_decode($this->request->query->get('ids', '{}'));
-            $deleteIds = [];
+            /** @var ListModel $model */
+            $model           = $this->getModel('lead.tag');
+            $ids             = json_decode($this->request->query->get('ids', '{}'));
+            $deleteIds       = [];
 
             // Loop over the IDs to perform access checks pre-delete
             foreach ($ids as $objectId) {
@@ -774,13 +796,11 @@ class EventController extends FormController
                 if (null === $entity) {
                     $flashes[] = [
                         'type'    => 'error',
-                        'msg'     => 'mautic.event.error.notfound',
+                        'msg'     => 'mautic.transaction.error.notfound',
                         'msgVars' => ['%id%' => $objectId],
                     ];
-                } elseif (!$this->get('mautic.security')->isGranted('lead:leads:deleteother')) {
+                } elseif (!$this->get('mautic.security')->isGranted('transaction:transaction:delete')) {
                     $flashes[] = $this->accessDenied(true);
-                } elseif ($model->isLocked($entity)) {
-                    $flashes[] = $this->isLocked($postActionVars, $entity, 'lead.event', true);
                 } else {
                     $deleteIds[] = $objectId;
                 }
@@ -788,29 +808,63 @@ class EventController extends FormController
 
             // Delete everything we are able to
             if (!empty($deleteIds)) {
-                $entities = $model->deleteEntities($deleteIds);
-                $deleted  = count($entities);
-                $this->addFlash(
-                    'mautic.event.notice.batch_deleted',
-                    [
-                        '%count%'     => $deleted,
-                    ]
-                );
+                try {
+                    $entities = $model->deleteEntities($deleteIds);
+                } catch (ForeignKeyConstraintViolationException $exception) {
+                    $flashes[] = [
+                        'type'    => 'notice',
+                        'msg'     => 'mautic.transaction.error.cannotbedeleted',
+                    ];
+
+                    return $this->postActionRedirect(
+                        array_merge($postActionVars, [
+                            'flashes' => $flashes,
+                        ])
+                    );
+                }
+
+                $flashes[] = [
+                    'type'    => 'notice',
+                    'msg'     => 'mautic.transaction.notice.batch_deleted',
+                    'msgVars' => [
+                        '%count%' => count($entities),
+                    ],
+                ];
             }
         } //else don't do anything
 
         return $this->postActionRedirect(
-            array_merge(
-                $postActionVars,
-                [
-                    'flashes' => $flashes,
-                ]
-            )
+            array_merge($postActionVars, [
+                'flashes' => $flashes,
+            ])
         );
     }
 
     /**
-     * Event Merge function.
+     * Clone an entity.
+     *
+     * @param int $objectId
+     *
+     * @return array|JsonResponse|\Symfony\Component\HttpFoundation\RedirectResponse|Response
+     */
+    public function cloneAction($objectId)
+    {
+        $model  = $this->getModel('transaction');
+        $entity = $model->getEntity($objectId);
+
+        if (null != $entity) {
+            if (!$this->get('mautic.security')->isGranted('lead:leads:create')) {
+                return $this->accessDenied();
+            }
+
+            $entity = clone $entity;
+        }
+
+        return $this->newAction($entity);
+    }
+
+    /**
+     * Company Merge function.
      *
      * @param $objectId
      *
@@ -834,25 +888,25 @@ class EventController extends FormController
             return $this->accessDenied();
         }
 
-        /** @var EventModel $model */
-        $model            = $this->getModel('lead.event');
-        $secondaryEvent = $model->getEntity($objectId);
+        /** @var Transaction $model */
+        $model            = $this->getModel('transaction');
+        $secondaryTransaction = $model->getEntity($objectId);
         $page             = $this->get('session')->get('mautic.lead.page', 1);
 
         //set the return URL
-        $returnUrl = $this->generateUrl('mautic_event_index', ['page' => $page]);
+        $returnUrl = $this->generateUrl('mautic_transaction_index', ['page' => $page]);
 
         $postActionVars = [
             'returnUrl'       => $returnUrl,
             'viewParameters'  => ['page' => $page],
-            'contentTemplate' => 'MauticEventBundle:Event:index',
+            'contentTemplate' => 'MauticTransactionBundle:Transaction:index',
             'passthroughVars' => [
-                'activeLink'    => '#mautic_event_index',
-                'mauticContent' => 'event',
+                'activeLink'    => '#mautic_transaction_index',
+                'mauticContent' => 'transaction',
             ],
         ];
 
-        if (null === $secondaryEvent) {
+        if (null === $secondaryTransaction) {
             return $this->postActionRedirect(
                 array_merge(
                     $postActionVars,
@@ -860,7 +914,7 @@ class EventController extends FormController
                         'flashes' => [
                             [
                                 'type'    => 'error',
-                                'msg'     => 'mautic.lead.event.error.notfound',
+                                'msg'     => 'mautic.lead.transaction.error.notfound',
                                 'msgVars' => ['%id%' => $objectId],
                             ],
                         ],
@@ -869,14 +923,14 @@ class EventController extends FormController
             );
         }
 
-        $action = $this->generateUrl('mautic_event_action', ['objectAction' => 'merge', 'objectId' => $secondaryEvent->getId()]);
+        $action = $this->generateUrl('mautic_transaction_action', ['objectAction' => 'merge', 'objectId' => $secondaryTransaction->getId()]);
 
         $form = $this->get('form.factory')->create(
-            EventMergeType::class,
+            TransactionMergeType::class,
             [],
             [
                 'action'      => $action,
-                'main_entity' => $secondaryEvent->getId(),
+                'main_entity' => $secondaryTransaction->getId(),
             ]
         );
 
@@ -885,10 +939,10 @@ class EventController extends FormController
             if (!$this->isFormCancelled($form)) {
                 if ($valid = $this->isFormValid($form)) {
                     $data           = $form->getData();
-                    $primaryMergeId = $data['event_to_merge'];
-                    $primaryEvent = $model->getEntity($primaryMergeId);
+                    $primaryMergeId = $data['transaction_to_merge'];
+                    $primaryTransaction = $model->getEntity($primaryMergeId);
 
-                    if (null === $primaryEvent) {
+                    if (null === $primaryTransaction) {
                         return $this->postActionRedirect(
                             array_merge(
                                 $postActionVars,
@@ -896,8 +950,8 @@ class EventController extends FormController
                                     'flashes' => [
                                         [
                                             'type'    => 'error',
-                                            'msg'     => 'mautic.lead.event.error.notfound',
-                                            'msgVars' => ['%id%' => $primaryEvent->getId()],
+                                            'msg'     => 'mautic.lead.transaction.error.notfound',
+                                            'msgVars' => ['%id%' => $primaryTransaction->getId()],
                                         ],
                                     ],
                                 ]
@@ -905,36 +959,36 @@ class EventController extends FormController
                         );
                     } elseif (!$permissions['lead:leads:editother']) {
                         return $this->accessDenied();
-                    } elseif ($model->isLocked($secondaryEvent)) {
+                    } elseif ($model->isLocked($secondaryTransaction)) {
                         //deny access if the entity is locked
-                        return $this->isLocked($postActionVars, $primaryEvent, 'lead.event');
-                    } elseif ($model->isLocked($primaryEvent)) {
+                        return $this->isLocked($postActionVars, $primaryTransaction, 'transaction');
+                    } elseif ($model->isLocked($primaryTransaction)) {
                         //deny access if the entity is locked
-                        return $this->isLocked($postActionVars, $primaryEvent, 'lead.event');
+                        return $this->isLocked($postActionVars, $primaryTransaction, 'transaction');
                     }
 
                     //Both leads are good so now we merge them
-                    $mainEvent = $model->eventMerge($primaryEvent, $secondaryEvent, false);
+                    $mainTransaction = $model->transactionMerge($primaryTransaction, $secondaryTransaction, false);
                 }
 
                 if ($valid) {
                     $viewParameters = [
-                        'objectId'     => $primaryEvent->getId(),
+                        'objectId'     => $primaryTransaction->getId(),
                         'objectAction' => 'edit',
                     ];
                 }
             } else {
                 $viewParameters = [
-                    'objectId'     => $secondaryEvent->getId(),
+                    'objectId'     => $secondaryTransaction->getId(),
                     'objectAction' => 'edit',
                 ];
             }
 
             return $this->postActionRedirect(
                 [
-                    'returnUrl'       => $this->generateUrl('mautic_event_action', $viewParameters),
+                    'returnUrl'       => $this->generateUrl('mautic_transaction_action', $viewParameters),
                     'viewParameters'  => $viewParameters,
-                    'contentTemplate' => 'MauticEventBundle:Event:edit',
+                    'contentTemplate' => 'MauticTransactionBundle:Transaction:edit',
                     'passthroughVars' => [
                         'closeModal' => 1,
                     ],
@@ -951,30 +1005,30 @@ class EventController extends FormController
                     'action'       => $action,
                     'form'         => $form->createView(),
                     'currentRoute' => $this->generateUrl(
-                        'mautic_event_action',
+                        'mautic_transaction_action',
                         [
                             'objectAction' => 'merge',
-                            'objectId'     => $secondaryEvent->getId(),
+                            'objectId'     => $secondaryTransaction->getId(),
                         ]
                     ),
                 ],
-                'contentTemplate' => 'MauticEventBundle:Event:merge.html.php',
+                'contentTemplate' => 'MauticTransactionBundle:Transaction:merge.html.php',
                 'passthroughVars' => [
                     'route'  => false,
-                    'target' => ('update' == $tmpl) ? '.event-merge-options' : null,
+                    'target' => ('update' == $tmpl) ? '.transaction-merge-options' : null,
                 ],
             ]
         );
     }
 
     /**
-     * Export event's data.
+     * Export transaction's data.
      *
-     * @param $eventId
+     * @param $transactionId
      *
      * @return array|JsonResponse|\Symfony\Component\HttpFoundation\RedirectResponse|\Symfony\Component\HttpFoundation\StreamedResponse
      */
-    public function eventExportAction($eventId)
+    public function transactionExportAction($transactionId)
     {
         //set some permissions
         $permissions = $this->get('mautic.security')->isGranted(
@@ -989,24 +1043,24 @@ class EventController extends FormController
             return $this->accessDenied();
         }
 
-        /** @var eventModel $eventModel */
-        $eventModel  = $this->getModel('lead.event');
-        $event       = $eventModel->getEntity($eventId);
+        /** @var Transaction $transactionModel */
+        $transactionModel  = $this->getModel('transaction');
+        $transaction       = $transactionModel->getEntity($transactionId);
         $dataType      = $this->request->get('filetype', 'csv');
 
-        if (empty($event)) {
+        if (empty($transaction)) {
             return $this->notFound();
         }
 
-        $eventFields = $event->getProfileFields();
+        $transactionFields = $transaction->getProfileFields();
         $export        = [];
-        foreach ($eventFields as $alias=>$eventField) {
+        foreach ($transactionFields as $alias=>$transactionField) {
             $export[] = [
                 'alias' => $alias,
-                'value' => $eventField,
+                'value' => $transactionField,
             ];
         }
 
-        return $this->exportResultsAs($export, $dataType, 'event_data_'.($eventFields['eventemail'] ?: $eventFields['id']));
+        return $this->exportResultsAs($export, $dataType, 'transaction_data_'.($transactionFields['transactionemail'] ?: $transactionFields['id']));
     }
 }
